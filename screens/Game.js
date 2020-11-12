@@ -230,19 +230,35 @@ export default function Game(props) {
         if (score > bestScore) {
             setBestScore(score);
             props.route.params.setCurrentHighscore(score);
-            return firebase
-                .firestore()
-                .collection("users")
-                .doc(props.route.params.loggedInUser.id)
-                .update({
-                    highscore: score,
-                })
-                .then(function () {
-                    console.log("Document successfully updated!");
-                })
-                .catch(function (error) {
-                    console.error("Error updating document: ", error);
-                });
+            if (props.route.params.gameMode == "normal") {
+                return firebase
+                    .firestore()
+                    .collection("users")
+                    .doc(props.route.params.loggedInUser.id)
+                    .update({
+                        highscore: score,
+                    })
+                    .then(function () {
+                        console.log("Document successfully updated!");
+                    })
+                    .catch(function (error) {
+                        console.error("Error updating document: ", error);
+                    });
+            } else if (props.route.params.gameMode == "speed") {
+                return firebase
+                    .firestore()
+                    .collection("users")
+                    .doc(props.route.params.loggedInUser.id)
+                    .update({
+                        speedScore: score,
+                    })
+                    .then(function () {
+                        console.log("Document successfully updated!");
+                    })
+                    .catch(function (error) {
+                        console.error("Error updating document: ", error);
+                    });
+            }
         }
     };
 

@@ -6,6 +6,9 @@ import {
     FlatList,
     Image,
     TouchableOpacity,
+    Animated,
+    TouchableWithoutFeedback,
+    Easing,
 } from "react-native";
 import FlatButton from "../shared/flatButton";
 import firebase from "../firebase/config";
@@ -17,26 +20,98 @@ import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 
 export default function LeaderBoard(props) {
+    const highscoreRef = useRef();
+    const speedScoreRef = useRef();
+    const timeScoreRef = useRef();
     const [highscores, setHighscores] = useState();
-    const [currentPosition, setCurrentPosition] = useState();
+    const [currentHighscoreRank, setCurrentHighscoreRank] = useState();
     const [currentHighscore, setCurrentHighscore] = useState();
+    const [currentSpeedScoreRank, setCurrentSpeedScoreRank] = useState();
+    const [currentSpeedScore, setCurrentSpeedScore] = useState();
+    const [currentTimeScoreRank, setCurrentTimeScoreRank] = useState();
+    const [currentTimeScore, setCurrentTimeScore] = useState();
     const handleBackToMenuPress = () => {
         props.navigation.navigate("Home");
     };
 
+    const selectedButton = useRef("normal");
+
+    const [moveAnimation, setMoveAnimation] = useState(
+        new Animated.ValueXY({ x: 2, y: 2 })
+    );
+    const [width, setWidth] = useState(new Animated.Value(95));
+
+    const moveToggle = (x, y) => {
+        Animated.timing(moveAnimation, {
+            toValue: { x: x, y: y },
+            duration: 200,
+            easing: Easing.ease,
+            useNativeDriver: false,
+        }).start();
+    };
+
+    const toggleWidth = () => {
+        let endWidth = 50;
+        if (selectedButton.current == "normal") {
+            endWidth = 95;
+        } else if (selectedButton.current == "speed") {
+            endWidth = 95;
+        } else {
+            endWidth = 75;
+        }
+
+        Animated.timing(width, {
+            toValue: endWidth,
+            duration: 200,
+            easing: Easing.linear,
+            useNativeDriver: false,
+        }).start();
+    };
+
+    console.log(props.route.params.loggedInUser.id);
+
     const firebaseQuery = async () => {
-        const snapshot = await firebase
+        const userQuery = await firebase
+            .firestore()
+            .collection("users")
+            .doc(props.route.params.loggedInUser.id)
+            .get()
+            .then(function (doc) {
+                if (doc.exists) {
+                    setCurrentHighscore(doc.data().highscore);
+                    setCurrentSpeedScore(doc.data().speedScore);
+                    setCurrentTimeScore(doc.data().timeScore);
+                } else {
+                    // doc.data() will be undefined in this case
+                    console.log("No such document!");
+                }
+            });
+
+        const highscoreSnapShot = await firebase
             .firestore()
             .collection("users")
             .orderBy("highscore", "desc")
-            .limit(500)
+            .limit(100)
             .get();
 
-        const data = await snapshot.docs.map((doc, i) => {
+        const speedScoreSnapShot = await firebase
+            .firestore()
+            .collection("users")
+            .orderBy("speedScore", "desc")
+            .limit(100)
+            .get();
+
+        const timeScoreSnapShot = await firebase
+            .firestore()
+            .collection("users")
+            .orderBy("timeScore", "desc")
+            .limit(100)
+            .get();
+
+        const highscoreData = await highscoreSnapShot.docs.map((doc, i) => {
             if (props.route.params.loggedInUser) {
                 if (props.route.params.loggedInUser.id == doc.data().id) {
-                    setCurrentPosition(i + 1);
-                    setCurrentHighscore(doc.data().highscore);
+                    setCurrentHighscoreRank(i + 1);
                 }
             }
             return {
@@ -46,7 +121,36 @@ export default function LeaderBoard(props) {
             };
         });
 
-        setHighscores(data);
+        const speedScoreData = await speedScoreSnapShot.docs.map((doc, i) => {
+            if (props.route.params.loggedInUser) {
+                if (props.route.params.loggedInUser.id == doc.data().id) {
+                    setCurrentSpeedScoreRank(i + 1);
+                }
+            }
+            return {
+                pos: i + 1,
+                username: doc.data().username,
+                highscore: doc.data().speedScore,
+            };
+        });
+
+        const timeScoreData = await timeScoreSnapShot.docs.map((doc, i) => {
+            if (props.route.params.loggedInUser) {
+                if (props.route.params.loggedInUser.id == doc.data().id) {
+                    setCurrentTimeScoreRank(i + 1);
+                }
+            }
+            return {
+                pos: i + 1,
+                username: doc.data().username,
+                highscore: doc.data().timeScore,
+            };
+        });
+
+        highscoreRef.current = highscoreData;
+        speedScoreRef.current = speedScoreData;
+        timeScoreRef.current = timeScoreData;
+        setHighscores(highscoreData);
     };
 
     useLayoutEffect(() => {
@@ -72,7 +176,7 @@ export default function LeaderBoard(props) {
 
         //             if (props.route.params.loggedInUser.id == doc.data().id) {
         //                 console.log("you are at position", i);
-        //                 setCurrentPosition(i);
+        //                 setCurrentHighscoreRank(i);
         //             }
         //             i++;
         //         });
@@ -90,8 +194,53 @@ export default function LeaderBoard(props) {
                     <FontAwesomeIcon icon={faChevronLeft} size={24} />
                     <Text style={styles.backText}>Menu</Text>
                 </TouchableOpacity>
+
                 <Image style={styles.trophy} source={trophy} />
                 {/* <Text style={styles.title}>Leaderboard</Text> */}
+                <View style={styles.toggleContainer}>
+                    <Animated.View
+                        style={[
+                            styles.toggle,
+                            moveAnimation.getLayout(),
+                            { width: width },
+                        ]}
+                    >
+                        <Text style={styles.ballButtonText}></Text>
+                    </Animated.View>
+                    <TouchableWithoutFeedback
+                        style={styles.normalToggle}
+                        onPress={() => {
+                            moveToggle(2, 2);
+                            selectedButton.current = "normal";
+                            toggleWidth();
+                            setHighscores(highscoreRef.current);
+                        }}
+                    >
+                        <Text style={styles.toggleText}>Normal</Text>
+                    </TouchableWithoutFeedback>
+                    <TouchableWithoutFeedback
+                        style={styles.speedToggle}
+                        onPress={() => {
+                            moveToggle(87, 2);
+                            selectedButton.current = "speed";
+                            toggleWidth();
+                            setHighscores(speedScoreRef.current);
+                        }}
+                    >
+                        <Text style={styles.toggleText}>Speed</Text>
+                    </TouchableWithoutFeedback>
+                    <TouchableWithoutFeedback
+                        style={styles.timeToggle}
+                        onPress={() => {
+                            moveToggle(173, 2);
+                            selectedButton.current = "time";
+                            toggleWidth();
+                            setHighscores(timeScoreRef.current);
+                        }}
+                    >
+                        <Text style={styles.toggleText}>Time</Text>
+                    </TouchableWithoutFeedback>
+                </View>
                 <View style={styles.flatListContainer}>
                     {/* <View style={styles.topRow}>
                         <View style={styles.topRowRankTextContainer}>
@@ -128,11 +277,55 @@ export default function LeaderBoard(props) {
                             </View>
                         )}
                     />
-                    {props.route.params.loggedInUser && currentPosition ? (
+                    {props.route.params.loggedInUser ? (
                         <View style={styles.bottomRow}>
                             <View style={styles.posTextContainer}>
                                 <Text style={styles.cellText}>
-                                    {currentPosition}.
+                                    {selectedButton.current == "normal"
+                                        ? currentHighscoreRank
+                                            ? currentHighscoreRank
+                                            : Math.ceil(
+                                                  ((highscores[0].highscore -
+                                                      highscores[
+                                                          highscores.length - 1
+                                                      ].highscore) /
+                                                      highscores.length) *
+                                                      (highscores[
+                                                          highscores.length - 1
+                                                      ].highscore -
+                                                          currentHighscore) +
+                                                      highscores.length
+                                              )
+                                        : selectedButton.current == "speed"
+                                        ? currentSpeedScoreRank
+                                            ? currentSpeedScoreRank
+                                            : Math.ceil(
+                                                  ((highscores[0].highscore -
+                                                      highscores[
+                                                          highscores.length - 1
+                                                      ].highscore) /
+                                                      highscores.length) *
+                                                      (highscores[
+                                                          highscores.length - 1
+                                                      ].highscore -
+                                                          currentHighscore) +
+                                                      highscores.length
+                                              )
+                                        : currentTimeScoreRank
+                                        ? currentTimeScoreRank
+                                        : Math.ceil(
+                                              ((highscores[0].highscore -
+                                                  highscores[
+                                                      highscores.length - 1
+                                                  ].highscore) /
+                                                  highscores.length) *
+                                                  (highscores[
+                                                      highscores.length - 1
+                                                  ].highscore -
+                                                      currentHighscore) +
+                                                  highscores.length
+                                          )}
+                                    .
                                 </Text>
                             </View>
                             <View style={styles.usernameTextContainer}>
@@ -142,12 +335,20 @@ export default function LeaderBoard(props) {
                             </View>
                             <View style={styles.currentScoreTextContainer}>
                                 <Text style={styles.cellText}>
-                                    {currentHighscore}
+                                    {selectedButton.current == "normal"
+                                        ? currentHighscore
+                                        : selectedButton.current == "speed"
+                                        ? currentSpeedScore
+                                        : currentTimeScore}
                                 </Text>
                             </View>
                         </View>
                     ) : (
-                        <Text></Text>
+                        <View style={styles.bottomRow}>
+                            <Text style={styles.cellText}>
+                                Register to see your rank
+                            </Text>
+                        </View>
                     )}
                 </View>
                 {/* <FlatButton
@@ -167,6 +368,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         backgroundColor: "#1EF1E3",
     },
+
     backButton: {
         flexDirection: "row",
         position: "absolute",
@@ -191,7 +393,7 @@ const styles = StyleSheet.create({
         paddingBottom: 30,
         fontWeight: "bold",
     },
-    currentRank: {
+    currentHighscoreRank: {
         textAlign: "center",
         fontSize: 20,
         fontWeight: "bold",
@@ -244,16 +446,45 @@ const styles = StyleSheet.create({
     //     flex: 1,
     //     textAlign: "center",
     // },
+    toggleContainer: {
+        flexDirection: "row",
+        height: 40,
+        backgroundColor: "#BFFBF7",
+        justifyContent: "space-around",
+        alignItems: "center",
+        borderRadius: 20,
+        marginBottom: 10,
+        width: 250,
+        padding: 2,
+    },
+    toggle: {
+        position: "absolute",
+        backgroundColor: "#5DCAF6",
+        borderRadius: 100,
+        // width: "38%",
+        height: "100%",
+    },
+    ballButton: {
+        width: "100%",
+        height: "100%",
+    },
+    toggleText: {
+        fontSize: 20,
+        fontFamily: "nunito-regular",
+    },
     flatListContainer: {
         // borderColor: "black",
         // borderWidth: 2,
         flex: 1,
-        marginBottom: 15,
+        // marginBottom: 15,
         backgroundColor: "#BFFBF7",
         padding: 5,
+        width: "100%",
+        justifyContent: "center",
+        alignItems: "center",
     },
     leaderBoard: {
-        width: Dimensions.get("screen").width / 1.2,
+        width: "100%",
         alignItems: "center",
         justifyContent: "center",
     },
@@ -264,8 +495,8 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         // borderBottomColor: "black",
         // borderBottomWidth: 2,
-        width: Dimensions.get("screen").width / 1.2,
-        backgroundColor: "#1DB7F2",
+        width: "100%",
+        backgroundColor: "#DFFDFB",
         marginBottom: 5,
         shadowColor: "#000",
         shadowOffset: {
@@ -276,13 +507,6 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
 
         elevation: 5,
-    },
-    rowLast: {
-        flexDirection: "row",
-        height: 40,
-        alignItems: "center",
-        justifyContent: "center",
-        width: Dimensions.get("screen").width / 1.2,
     },
     posTextContainer: {
         flex: 1,
@@ -305,14 +529,14 @@ const styles = StyleSheet.create({
         height: "100%",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "#1D93F2",
+        backgroundColor: "#5DCAF6",
     },
     currentScoreTextContainer: {
         flex: 1,
         height: "100%",
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: "#F44E90",
+        backgroundColor: "#F88EB9",
     },
     cellText: {
         fontSize: 20,
@@ -320,13 +544,14 @@ const styles = StyleSheet.create({
     },
     bottomRow: {
         flexDirection: "row",
+        textAlign: "center",
         height: 40,
         alignItems: "center",
         justifyContent: "center",
         // borderBottomColor: "black",
         // borderBottomWidth: 2,
-        width: Dimensions.get("screen").width / 1.2,
-        backgroundColor: "#F77EAE",
+        width: "100%",
+        backgroundColor: "#FCCFE1",
         marginTop: 5,
         shadowColor: "#000",
         shadowOffset: {

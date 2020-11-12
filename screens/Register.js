@@ -50,6 +50,8 @@ export default function RegisterForm(props) {
                     username: values.username,
                     password: values.password,
                     highscore: 0,
+                    speedScore: 0,
+                    timeScore: 0,
                 };
                 const usersRef = firebase.firestore().collection("users");
                 usersRef

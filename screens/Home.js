@@ -4,6 +4,7 @@ import ScrollingBackground from "react-native-scrolling-images";
 import { Dimensions } from "react-native";
 import bgImg from "../assets/images/doodle3c.jpg";
 import banner from "../assets/images/bannerBlue.png";
+import { AppLoading } from "expo";
 
 import {
     StyleSheet,
@@ -23,12 +24,16 @@ export default function Home(props) {
     const [modalStatus, setModalStatus] = useState("closed");
     const [loggedInUser, setLoggedInUser] = useState(props.extraData.userData);
     const [currentHighscore, setCurrentHighscore] = useState(0);
+    const [currentSpeedScore, setCurrentSpeedScore] = useState(0);
+    const [currentTimeScore, setCurrentTimeScore] = useState(0);
 
     useLayoutEffect(() => {
         if (loggedInUser) {
             setCurrentHighscore(loggedInUser.highscore);
+            setCurrentSpeedScore(loggedInUser.speedScore);
+            setCurrentTimeScore(loggedInUser.timeScore);
         }
-    }, []);
+    }, [loggedInUser]);
     // const mainDeck = [];
 
     // (function initializeMainDeck() {
@@ -44,28 +49,28 @@ export default function Home(props) {
     //     currentHighscore.current = score;
     // };
 
-    const handleStartGamePress = (time, deckSize, sampleDeckSize) => {
-        if (loggedInUser) {
-            props.navigation.navigate("Game", {
-                loggedInUser: loggedInUser,
-                highscore: currentHighscore,
-                setCurrentHighscore: setCurrentHighscore,
-                time,
-                deckSize,
-                sampleDeckSize,
-                mainDeck: props.extraData.mainDeck,
-            });
-        } else {
-            props.navigation.navigate("Game", {
-                loggedInUser: null,
-                highscore: 0,
-                time,
-                deckSize,
-                sampleDeckSize,
-                mainDeck: props.extraData.mainDeck,
-            });
-        }
-    };
+    // const handleStartGamePress = (time, deckSize, sampleDeckSize) => {
+    //     if (loggedInUser) {
+    //         props.navigation.navigate("Game", {
+    //             loggedInUser: loggedInUser,
+    //             highscore: currentHighscore,
+    //             setCurrentHighscore: setCurrentHighscore,
+    //             time,
+    //             deckSize,
+    //             sampleDeckSize,
+    //             mainDeck: props.extraData.mainDeck,
+    //         });
+    //     } else {
+    //         props.navigation.navigate("Game", {
+    //             loggedInUser: null,
+    //             highscore: 0,
+    //             time,
+    //             deckSize,
+    //             sampleDeckSize,
+    //             mainDeck: props.extraData.mainDeck,
+    //         });
+    //     }
+    // };
 
     const handleLeaderBoardPress = () => {
         props.navigation.navigate("LeaderBoard", {
@@ -87,21 +92,21 @@ export default function Home(props) {
         setLoggedInUser(null);
     };
 
-    const handleAddHighScorePress = () => {
-        return firebase
-            .firestore()
-            .collection("users")
-            .doc(loggedInUser.id)
-            .update({
-                highscore: 1000,
-            })
-            .then(function () {
-                console.log("Document successfully updated!");
-            })
-            .catch(function (error) {
-                console.error("Error updating document: ", error);
-            });
-    };
+    // const handleAddHighScorePress = () => {
+    //     return firebase
+    //         .firestore()
+    //         .collection("users")
+    //         .doc(loggedInUser.id)
+    //         .update({
+    //             highscore: 1000,
+    //         })
+    //         .then(function () {
+    //             console.log("Document successfully updated!");
+    //         })
+    //         .catch(function (error) {
+    //             console.error("Error updating document: ", error);
+    //         });
+    // };
 
     const handleHowToPlayPress = () => {
         props.navigation.navigate("HowToPlay");
@@ -112,7 +117,11 @@ export default function Home(props) {
             props.navigation.navigate("GameModes", {
                 loggedInUser: loggedInUser,
                 currentHighscore: currentHighscore,
+                currentSpeedScore: currentSpeedScore,
+                currentTimeScore: currentTimeScore,
                 setCurrentHighscore: setCurrentHighscore,
+                setCurrentSpeedScore: setCurrentSpeedScore,
+                setCurrentTimeScore: setCurrentTimeScore,
                 mainDeck: props.extraData.mainDeck,
             });
         } else {
@@ -144,10 +153,14 @@ export default function Home(props) {
                         <Text style={styles.scoreText}>{currentHighscore}</Text>
                     </Text>
                     <Text style={styles.bestText}>
-                        Best Speed: <Text style={styles.speedText}>43</Text>
+                        Best Speed:{" "}
+                        <Text style={styles.speedText}>
+                            {currentSpeedScore}
+                        </Text>
                     </Text>
                     <Text style={styles.bestText}>
-                        Best Time: <Text style={styles.timeText}>1:36</Text>
+                        Best Time:{" "}
+                        <Text style={styles.timeText}>{currentTimeScore}</Text>
                     </Text>
                 </View>
             ) : (
@@ -162,17 +175,17 @@ export default function Home(props) {
             >
                 <FlatButton title="Game Modes" onPress={handleGameModesPress} />
                 {/* <FlatButton
-                title="Speed Game"
-                onPress={() => handleStartGamePress(5, 10, 3)}
-            />
-            <FlatButton
-                title="Endless Game"
-                onPress={() => handleStartGamePress(10, 100, 9)}
-            /> */}
+                    title="Speed Game"
+                    onPress={() => handleStartGamePress(5, 10, 3)}
+                />
+                <FlatButton
+                    title="Endless Game"
+                    onPress={() => handleStartGamePress(10, 100, 9)}
+                /> */}
                 {/* <FlatButton
-                title="add highscore"
-                onPress={handleAddHighScorePress}
-            /> */}
+                    title="add highscore"
+                    onPress={handleAddHighScorePress}
+                /> */}
                 <FlatButton
                     title="How to Play"
                     onPress={handleHowToPlayPress}
