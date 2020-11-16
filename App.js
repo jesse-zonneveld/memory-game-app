@@ -1,6 +1,7 @@
 import React, { useState, useLayoutEffect } from "react";
 import { AppLoading } from "expo";
-import { useFonts } from "expo-font";
+import * as Font from "expo-font";
+import { Asset } from "expo-asset";
 import { AppNavigator } from "./routes/AppNavigator";
 import firebase from "./firebase/config";
 import { library } from "@fortawesome/fontawesome-svg-core";
@@ -427,10 +428,26 @@ import {
     faPooStorm,
     faIcicles,
 } from "@fortawesome/free-solid-svg-icons";
+import { render } from "react-dom";
+
+function cacheImages(images) {
+    return images.map((image) => {
+        if (typeof image === "string") {
+            return Image.prefetch(image);
+        } else {
+            return Asset.fromModule(image).downloadAsync();
+        }
+    });
+}
+
+function cacheFonts(fonts) {
+    return fonts.map((font) => Font.loadAsync(font));
+}
 
 export default function App() {
     const [user, setUser] = useState(null);
     const [noUser, setNoUser] = useState(false);
+    const [appIsReady, setAppIsReady] = useState(false);
 
     library.add(
         faLowVision,
@@ -874,19 +891,60 @@ export default function App() {
                 setNoUser(true);
             }
         });
+        return "done";
     };
 
-    useLayoutEffect(() => {
-        firebaseAsync();
-    }, []);
+    const _loadAssetsAsync = async () => {
+        const firebaseData = await firebaseAsync();
+        const imageAssets = cacheImages([
+            require("./assets/images/bg2X.png"),
+            require("./assets/images/bannerBlue.png"),
+            require("./assets/images/doodle3c.jpg"),
+            require("./assets/images/trophyTeal.jpg"),
+            require("./assets/images/confetti.gif"),
+        ]);
 
-    let [fontsLoaded] = useFonts({
-        "nunito-regular": require("./assets/fonts/Nunito-Regular.ttf"),
-        "nunito-bold": require("./assets/fonts/Nunito-Bold.ttf"),
-        "nunito-light": require("./assets/fonts/Nunito-Light.ttf"),
-    });
+        const fontAssets = cacheFonts([
+            { "nunito-regular": require("./assets/fonts/Nunito-Regular.ttf") },
+            { "nunito-bold": require("./assets/fonts/Nunito-Bold.ttf") },
+            { "nunito-light": require("./assets/fonts/Nunito-Light.ttf") },
+        ]);
 
-    if (fontsLoaded && (user || noUser)) {
+        await Promise.all([...imageAssets, ...fontAssets]);
+    };
+
+    const _handleLoadingError = (error) => {
+        // In this case, you might want to report the error to your error
+        // reporting service, for example Sentry
+        console.warn(error);
+    };
+
+    const _handleFinishLoading = () => {
+        setAppIsReady(true);
+    };
+
+    // useLayoutEffect(() => {
+    //     firebaseAsync();
+    // }, []);
+
+    // let [fontsLoaded] = useFonts({
+    //     "nunito-regular": require("./assets/fonts/Nunito-Regular.ttf"),
+    //     "nunito-bold": require("./assets/fonts/Nunito-Bold.ttf"),
+    //     "nunito-light": require("./assets/fonts/Nunito-Light.ttf"),
+    // });
+
+    // if (fontsLoaded && (user || noUser)) {
+    //     return (
+    //         <AppNavigator
+    //             userData={user}
+    //             mainDeck={Object.keys(library.definitions.fas)}
+    //         />
+    //     );
+    // } else {
+    //     return <AppLoading />;
+    // }
+
+    if (appIsReady && (user || noUser)) {
         return (
             <AppNavigator
                 userData={user}
@@ -894,6 +952,12 @@ export default function App() {
             />
         );
     } else {
-        return <AppLoading />;
+        return (
+            <AppLoading
+                startAsync={_loadAssetsAsync}
+                onError={_handleLoadingError}
+                onFinish={_handleFinishLoading}
+            />
+        );
     }
 }

@@ -7,6 +7,7 @@ import LeaderBoard from "../screens/LeaderBoard";
 import Sandbox from "../screens/Sandbox";
 import HowToPlay from "../screens/HowToPlay";
 import GameModes from "../screens/GameModes";
+import TimeGame from "../screens/TimeGame";
 
 const { Navigator, Screen } = createStackNavigator();
 
@@ -24,6 +25,7 @@ const HomeNavigator = (mainProps) => (
             )}
         </Screen>
         <Screen name="Game" component={Game} />
+        <Screen name="TimeGame" component={TimeGame} />
         <Screen name="LeaderBoard" component={LeaderBoard} />
         <Screen name="Sandbox" component={Sandbox} />
         <Screen name="HowToPlay" component={HowToPlay} />

@@ -20,7 +20,7 @@ const reviewSchema = yup.object({
             console.log(emails);
             return !emails.includes(val);
         }),
-    password: yup.string().required().min(8),
+    password: yup.string().required().min(6),
     username: yup
         .string()
         .required()

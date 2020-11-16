@@ -1,9 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View, TouchableOpacity, Image } from "react-native";
-import FlatButton from "../shared/flatButton";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import banner from "../assets/images/bannerBlue.png";
 
 export default function HowToPlay(props) {
     const handleBackToMenuPress = () => {
@@ -19,7 +17,10 @@ export default function HowToPlay(props) {
                 <FontAwesomeIcon icon={faChevronLeft} size={24} />
                 <Text style={styles.backText}>Menu</Text>
             </TouchableOpacity>
-            <Image source={banner} style={styles.banner} />
+            <Image
+                source={require("../assets/images/bannerBlue.png")}
+                style={styles.banner}
+            />
             <Text style={styles.title}>How to Play</Text>
             <View style={styles.instructionsContainer}>
                 <View style={styles.textContainer}>

@@ -10,14 +10,17 @@ import {
     TouchableWithoutFeedback,
     Easing,
 } from "react-native";
-import FlatButton from "../shared/flatButton";
 import firebase from "../firebase/config";
 import { AppLoading } from "expo";
-import { Dimensions } from "react-native";
-import trophy from "../assets/images/trophyTeal.jpg";
-import { FontAwesome } from "@expo/vector-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import {
+    AdMobBanner,
+    AdMobInterstitial,
+    PublisherBanner,
+    AdMobRewarded,
+    setTestDeviceIDAsync,
+} from "expo-ads-admob";
 
 export default function LeaderBoard(props) {
     const highscoreRef = useRef();
@@ -68,80 +71,136 @@ export default function LeaderBoard(props) {
         }).start();
     };
 
-    console.log(props.route.params.loggedInUser.id);
+    // console.log(props.route.params.loggedInUser.id);
 
     const firebaseQuery = async () => {
-        const userQuery = await firebase
-            .firestore()
-            .collection("users")
-            .doc(props.route.params.loggedInUser.id)
-            .get()
-            .then(function (doc) {
-                if (doc.exists) {
-                    setCurrentHighscore(doc.data().highscore);
-                    setCurrentSpeedScore(doc.data().speedScore);
-                    setCurrentTimeScore(doc.data().timeScore);
-                } else {
-                    // doc.data() will be undefined in this case
-                    console.log("No such document!");
-                }
-            });
+        if (props.route.params.loggedInUser) {
+            const userQuery = await firebase
+                .firestore()
+                .collection("users")
+                .doc(props.route.params.loggedInUser.id)
+                .get()
+                .then(function (doc) {
+                    if (doc.exists) {
+                        setCurrentHighscore(doc.data().highscore);
+                        setCurrentSpeedScore(doc.data().speedScore);
+                        setCurrentTimeScore(doc.data().timeScore);
+                    } else {
+                        // doc.data() will be undefined in this case
+                        console.log("No such document!");
+                    }
+                });
+        }
 
         const highscoreSnapShot = await firebase
             .firestore()
             .collection("users")
+            .where("highscore", ">", 0)
             .orderBy("highscore", "desc")
-            .limit(100)
+            .limit(10)
             .get();
 
         const speedScoreSnapShot = await firebase
             .firestore()
             .collection("users")
+            .where("speedScore", ">", 0)
             .orderBy("speedScore", "desc")
-            .limit(100)
+            .limit(10)
             .get();
 
         const timeScoreSnapShot = await firebase
             .firestore()
             .collection("users")
-            .orderBy("timeScore", "desc")
-            .limit(100)
+            .where("timeScore", ">", 0)
+            .orderBy("timeScore")
+            .limit(10)
             .get();
 
+        let prevScore = 999999999;
+        let pos = 1;
+        let tiedIndex = 1;
+
         const highscoreData = await highscoreSnapShot.docs.map((doc, i) => {
+            const highscore = doc.data().highscore;
+            let rank = 0;
+
+            if (highscore < prevScore) {
+                rank = pos;
+                tiedIndex = rank;
+                pos++;
+            } else {
+                rank = tiedIndex;
+                if (pos == 1) pos = 2;
+            }
+            prevScore = highscore;
+
             if (props.route.params.loggedInUser) {
                 if (props.route.params.loggedInUser.id == doc.data().id) {
-                    setCurrentHighscoreRank(i + 1);
+                    setCurrentHighscoreRank(rank);
                 }
             }
             return {
-                pos: i + 1,
+                pos: rank,
                 username: doc.data().username,
-                highscore: doc.data().highscore,
+                highscore: highscore,
             };
         });
 
-        const speedScoreData = await speedScoreSnapShot.docs.map((doc, i) => {
+        prevScore = 999999999;
+        pos = 1;
+        tiedIndex = 1;
+
+        const speedScoreData = await speedScoreSnapShot.docs.map((doc) => {
+            const highscore = doc.data().speedScore;
+            let rank = 0;
+            console.log(highscore, prevScore);
+            if (highscore < prevScore) {
+                rank = pos;
+                tiedIndex = rank;
+                pos++;
+            } else {
+                rank = tiedIndex;
+                if (pos == 1) pos = 2;
+            }
+            prevScore = highscore;
+
             if (props.route.params.loggedInUser) {
                 if (props.route.params.loggedInUser.id == doc.data().id) {
-                    setCurrentSpeedScoreRank(i + 1);
+                    setCurrentSpeedScoreRank(rank);
                 }
             }
             return {
-                pos: i + 1,
+                pos: rank,
                 username: doc.data().username,
                 highscore: doc.data().speedScore,
             };
         });
 
-        const timeScoreData = await timeScoreSnapShot.docs.map((doc, i) => {
+        prevScore = 0;
+        pos = 1;
+        tiedIndex = 1;
+
+        const timeScoreData = await timeScoreSnapShot.docs.map((doc) => {
+            const highscore = doc.data().timeScore;
+            let rank = 0;
+            console.log(highscore, prevScore);
+            if (highscore > prevScore) {
+                rank = pos;
+                tiedIndex = rank;
+                pos++;
+            } else {
+                rank = tiedIndex;
+                if (pos == 1) pos = 2;
+            }
+            prevScore = highscore;
+
             if (props.route.params.loggedInUser) {
                 if (props.route.params.loggedInUser.id == doc.data().id) {
-                    setCurrentTimeScoreRank(i + 1);
+                    setCurrentTimeScoreRank(rank);
                 }
             }
             return {
-                pos: i + 1,
+                pos: rank,
                 username: doc.data().username,
                 highscore: doc.data().timeScore,
             };
@@ -154,6 +213,7 @@ export default function LeaderBoard(props) {
     };
 
     useLayoutEffect(() => {
+        showVideoAd();
         firebaseQuery();
         // console.log(props.route.params.loggedInUser);
         // firebase
@@ -184,6 +244,32 @@ export default function LeaderBoard(props) {
         //     });
     }, []);
 
+    const fancyTimeFormat = (duration) => {
+        // Hours, minutes and seconds
+        var hrs = ~~(duration / 3600);
+        var mins = ~~((duration % 3600) / 60);
+        var secs = ~~duration % 60;
+
+        // Output like "1:01" or "4:03:59" or "123:03:59"
+        var ret = "";
+
+        if (hrs > 0) {
+            ret += "" + hrs + ":" + (mins < 10 ? "0" : "");
+        }
+
+        ret += "" + mins + ":" + (secs < 10 ? "0" : "");
+        ret += "" + secs;
+        return ret;
+    };
+
+    const showVideoAd = async () => {
+        await AdMobInterstitial.setAdUnitID(
+            "ca-app-pub-3940256099942544/5135589807" // test
+        );
+        await AdMobInterstitial.requestAdAsync({ servePersonalizedAds: true });
+        await AdMobInterstitial.showAdAsync();
+    };
+
     if (highscores) {
         return (
             <View style={styles.container}>
@@ -195,7 +281,10 @@ export default function LeaderBoard(props) {
                     <Text style={styles.backText}>Menu</Text>
                 </TouchableOpacity>
 
-                <Image style={styles.trophy} source={trophy} />
+                <Image
+                    style={styles.trophy}
+                    source={require("../assets/images/trophyTeal.jpg")}
+                />
                 {/* <Text style={styles.title}>Leaderboard</Text> */}
                 <View style={styles.toggleContainer}>
                     <Animated.View
@@ -271,7 +360,9 @@ export default function LeaderBoard(props) {
                                 </View>
                                 <View style={styles.scoreTextContainer}>
                                     <Text style={styles.cellText}>
-                                        {item.highscore}
+                                        {selectedButton.current == "time"
+                                            ? fancyTimeFormat(item.highscore)
+                                            : item.highscore}
                                     </Text>
                                 </View>
                             </View>
@@ -282,7 +373,9 @@ export default function LeaderBoard(props) {
                             <View style={styles.posTextContainer}>
                                 <Text style={styles.cellText}>
                                     {selectedButton.current == "normal"
-                                        ? currentHighscoreRank
+                                        ? currentHighscore == 0
+                                            ? "NA"
+                                            : currentHighscoreRank
                                             ? currentHighscoreRank
                                             : Math.ceil(
                                                   ((highscores[0].highscore -
@@ -297,7 +390,9 @@ export default function LeaderBoard(props) {
                                                       highscores.length
                                               )
                                         : selectedButton.current == "speed"
-                                        ? currentSpeedScoreRank
+                                        ? currentSpeedScore == 0
+                                            ? "NA"
+                                            : currentSpeedScoreRank
                                             ? currentSpeedScoreRank
                                             : Math.ceil(
                                                   ((highscores[0].highscore -
@@ -311,18 +406,20 @@ export default function LeaderBoard(props) {
                                                           currentHighscore) +
                                                       highscores.length
                                               )
+                                        : currentTimeScore == 0
+                                        ? "NA"
                                         : currentTimeScoreRank
                                         ? currentTimeScoreRank
                                         : Math.ceil(
-                                              ((highscores[0].highscore -
+                                              ((highscores[
+                                                  highscores.length - 1
+                                              ].highscore -
+                                                  highscores[0].highscore) /
+                                                  highscores.length) *
+                                                  currentHighscore -
                                                   highscores[
                                                       highscores.length - 1
-                                                  ].highscore) /
-                                                  highscores.length) *
-                                                  (highscores[
-                                                      highscores.length - 1
-                                                  ].highscore -
-                                                      currentHighscore) +
+                                                  ].highscore +
                                                   highscores.length
                                           )}
                                     .
@@ -339,7 +436,7 @@ export default function LeaderBoard(props) {
                                         ? currentHighscore
                                         : selectedButton.current == "speed"
                                         ? currentSpeedScore
-                                        : currentTimeScore}
+                                        : fancyTimeFormat(currentTimeScore)}
                                 </Text>
                             </View>
                         </View>

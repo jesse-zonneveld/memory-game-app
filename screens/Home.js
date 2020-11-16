@@ -1,10 +1,6 @@
-import React, { useRef, useState, useLayoutEffect } from "react";
+import React, { useRef, useState, useLayoutEffect, useEffect } from "react";
 import firebase from "../firebase/config";
 import ScrollingBackground from "react-native-scrolling-images";
-import { Dimensions } from "react-native";
-import bgImg from "../assets/images/doodle3c.jpg";
-import banner from "../assets/images/bannerBlue.png";
-import { AppLoading } from "expo";
 
 import {
     StyleSheet,
@@ -14,10 +10,14 @@ import {
     Modal,
     Keyboard,
     Image,
+    Dimensions,
 } from "react-native";
 import FlatButton from "../shared/flatButton";
 import LoginForm from "./Login";
 import RegisterForm from "./Register";
+import { Audio } from "expo-av";
+
+import { AdMobBanner } from "expo-ads-admob";
 
 export default function Home(props) {
     console.log(props.extraData.mainDeck);
@@ -34,6 +34,7 @@ export default function Home(props) {
             setCurrentTimeScore(loggedInUser.timeScore);
         }
     }, [loggedInUser]);
+
     // const mainDeck = [];
 
     // (function initializeMainDeck() {
@@ -72,7 +73,24 @@ export default function Home(props) {
     //     }
     // };
 
+    const soundPress = async () => {
+        try {
+            const {
+                sound: soundObject,
+                status,
+            } = await Audio.Sound.createAsync(
+                require("../assets/sounds/ding.wav"),
+                { shouldPlay: true }
+            );
+            await soundObject.playAsync();
+        } catch (error) {
+            console.log(error);
+        }
+    };
+
     const handleLeaderBoardPress = () => {
+        soundPress();
+
         props.navigation.navigate("LeaderBoard", {
             loggedInUser: loggedInUser,
         });
@@ -83,6 +101,8 @@ export default function Home(props) {
     };
 
     const handleLogoutPress = () => {
+        soundPress();
+
         firebase
             .auth()
             .signOut()
@@ -109,10 +129,14 @@ export default function Home(props) {
     // };
 
     const handleHowToPlayPress = () => {
+        // pressSound.current.playAsync();
+        soundPress();
         props.navigation.navigate("HowToPlay");
     };
 
     const handleGameModesPress = () => {
+        soundPress();
+
         if (loggedInUser) {
             props.navigation.navigate("GameModes", {
                 loggedInUser: loggedInUser,
@@ -133,35 +157,62 @@ export default function Home(props) {
         }
     };
 
+    const fancyTimeFormat = (duration) => {
+        // Hours, minutes and seconds
+        var hrs = ~~(duration / 3600);
+        var mins = ~~((duration % 3600) / 60);
+        var secs = ~~duration % 60;
+
+        // Output like "1:01" or "4:03:59" or "123:03:59"
+        var ret = "";
+
+        if (hrs > 0) {
+            ret += "" + hrs + ":" + (mins < 10 ? "0" : "");
+        }
+
+        ret += "" + mins + ":" + (secs < 10 ? "0" : "");
+        ret += "" + secs;
+        return ret;
+    };
+
     return (
         <View style={styles.container}>
             <ScrollingBackground
                 style={styles.scrollingBackground}
                 speed={10}
                 direction={"left"}
-                images={[bgImg]}
+                images={[require("../assets/images/doodle3c.jpg")]}
             />
-            <Image source={banner} style={styles.banner} />
+            <Image
+                source={require("../assets/images/bannerBlue.png")}
+                style={styles.banner}
+            />
             <Text style={styles.title}>Memory Press</Text>
             {loggedInUser ? (
                 <View style={styles.usernameContainer}>
                     <Text style={styles.usernameText}>
                         {loggedInUser.username}
                     </Text>
-                    <Text style={styles.bestText}>
-                        Best Score:{" "}
-                        <Text style={styles.scoreText}>{currentHighscore}</Text>
-                    </Text>
-                    <Text style={styles.bestText}>
-                        Best Speed:{" "}
-                        <Text style={styles.speedText}>
-                            {currentSpeedScore}
+                    <View style={styles.scoresContainer}>
+                        <Text style={styles.bestText}>
+                            Best Score:{" "}
+                            <Text style={styles.scoreText}>
+                                {currentHighscore}
+                            </Text>
                         </Text>
-                    </Text>
-                    <Text style={styles.bestText}>
-                        Best Time:{" "}
-                        <Text style={styles.timeText}>{currentTimeScore}</Text>
-                    </Text>
+                        <Text style={styles.bestText}>
+                            Best Speed:{" "}
+                            <Text style={styles.speedText}>
+                                {currentSpeedScore}
+                            </Text>
+                        </Text>
+                        <Text style={styles.bestText}>
+                            Best Time:{" "}
+                            <Text style={styles.timeText}>
+                                {fancyTimeFormat(currentTimeScore)}
+                            </Text>
+                        </Text>
+                    </View>
                 </View>
             ) : (
                 <Text></Text>
@@ -209,6 +260,12 @@ export default function Home(props) {
                     </View>
                 )}
             </View>
+            <AdMobBanner
+                style={styles.ad}
+                bannerSize={"smartBannerPortrait"}
+                adUnitID="ca-app-pub-3940256099942544/2934735716"
+                onDidFailToReceiveAdWithError={() => console.log("ad error")}
+            />
 
             {/* <FlatButton title="Sandbox" onPress={handleSandboxPress} /> */}
 
@@ -245,6 +302,12 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         backgroundColor: "#fff",
+    },
+    ad: {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        width: "100%",
     },
     modalContainer: {
         flex: 1,
@@ -286,7 +349,7 @@ const styles = StyleSheet.create({
         borderColor: "black",
         position: "absolute",
         top: 180,
-        paddingHorizontal: 20,
+        paddingHorizontal: 40,
         paddingVertical: 10,
         backgroundColor: "rgba(255,255,255,0.8)",
         shadowColor: "#000",
@@ -298,6 +361,10 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
 
         elevation: 5,
+    },
+    scoresContainer: {
+        width: "100%",
+        alignItems: "flex-start",
     },
     usernameText: {
         fontSize: 25,
@@ -326,7 +393,7 @@ const styles = StyleSheet.create({
     },
     buttonsLoggedOutContainer: {
         position: "absolute",
-        top: 300,
+        top: 280,
     },
     buttonsLoggedInContainer: {
         position: "absolute",

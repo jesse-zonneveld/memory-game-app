@@ -1,15 +1,37 @@
 import React from "react";
-import { StyleSheet, Text, View, TouchableOpacity, Image } from "react-native";
+import {
+    StyleSheet,
+    Text,
+    View,
+    TouchableOpacity,
+    Image,
+    ImageBackground,
+} from "react-native";
 import FlatButtonBig from "../shared/flatButtonBig";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import banner from "../assets/images/bannerBlue.png";
 import ScrollingBackground from "react-native-scrolling-images";
-import bgImg from "../assets/images/doodle3c.jpg";
+import { Audio } from "expo-av";
+import { AdMobBanner } from "expo-ads-admob";
 
 export default function GameModes(props) {
     const handleBackToMenuPress = () => {
         props.navigation.navigate("Home");
+    };
+
+    const soundPress = async () => {
+        try {
+            const {
+                sound: soundObject,
+                status,
+            } = await Audio.Sound.createAsync(
+                require("../assets/sounds/ding.wav"),
+                { shouldPlay: true }
+            );
+            await soundObject.playAsync();
+        } catch (error) {
+            console.log(error);
+        }
     };
 
     const handleNormalGamePress = (
@@ -18,6 +40,7 @@ export default function GameModes(props) {
         deckSize,
         sampleDeckSize
     ) => {
+        soundPress();
         if (props.route.params.loggedInUser) {
             props.navigation.navigate("Game", {
                 loggedInUser: props.route.params.loggedInUser,
@@ -43,6 +66,8 @@ export default function GameModes(props) {
     };
 
     const handleSpeedGamePress = (gameMode, time, deckSize, sampleDeckSize) => {
+        soundPress();
+
         if (props.route.params.loggedInUser) {
             props.navigation.navigate("Game", {
                 loggedInUser: props.route.params.loggedInUser,
@@ -67,13 +92,36 @@ export default function GameModes(props) {
         }
     };
 
+    const handleTimeGamePress = (deckSize, sampleDeckSize) => {
+        soundPress();
+
+        if (props.route.params.loggedInUser) {
+            props.navigation.navigate("TimeGame", {
+                loggedInUser: props.route.params.loggedInUser,
+                highscore: props.route.params.currentTimeScore,
+                setCurrentHighscore: props.route.params.setCurrentTimeScore,
+                deckSize,
+                sampleDeckSize,
+                mainDeck: props.route.params.mainDeck,
+            });
+        } else {
+            props.navigation.navigate("TimeGame", {
+                loggedInUser: null,
+                highscore: 0,
+                deckSize,
+                sampleDeckSize,
+                mainDeck: props.route.params.mainDeck,
+            });
+        }
+    };
+
     return (
         <View style={styles.container}>
             <ScrollingBackground
                 style={styles.scrollingBackground}
                 speed={10}
                 direction={"left"}
-                images={[bgImg]}
+                images={[require("../assets/images/doodle3c.jpg")]}
             />
             <TouchableOpacity
                 style={styles.backButton}
@@ -82,7 +130,10 @@ export default function GameModes(props) {
                 <FontAwesomeIcon icon={faChevronLeft} size={24} />
                 <Text style={styles.backText}>Menu</Text>
             </TouchableOpacity>
-            <Image source={banner} style={styles.banner} />
+            <Image
+                source={require("../assets/images/bannerBlue.png")}
+                style={styles.banner}
+            />
             <Text style={styles.title}>Game Modes</Text>
             <View style={styles.buttonsContainer}>
                 <FlatButtonBig
@@ -97,10 +148,15 @@ export default function GameModes(props) {
                 />
                 <FlatButtonBig
                     title="Timed 50"
-                    onPress={() => handleStartGamePress("timed", 15, 100, 9)}
+                    onPress={() => handleTimeGamePress(50, 9)}
                     color={"#E31EF1"}
                 />
             </View>
+            <AdMobBanner
+                style={styles.ad}
+                adUnitID="ca-app-pub-3940256099942544/2934735716"
+                onDidFailToReceiveAdWithError={() => console.log("ad error")}
+            />
         </View>
     );
 }
@@ -111,6 +167,12 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         backgroundColor: "#fff",
+    },
+    ad: {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        width: "100%",
     },
     scrollingBackground: {
         backgroundColor: "#fff",

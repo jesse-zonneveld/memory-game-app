@@ -13,28 +13,15 @@ import { Dimensions } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import firebase from "../firebase/config";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
-import { AnimatedCircularProgress } from "react-native-circular-progress";
 import { Audio } from "expo-av";
 import { AdMobBanner } from "expo-ads-admob";
 
-export default function Game(props) {
+export default function TimeGame(props) {
     const playingDeck = useRef(
         [...props.route.params.mainDeck]
             .sort(() => Math.random() - 0.5)
             .slice(0, props.route.params.deckSize)
     );
-    // let initialSampleDeck = [];
-
-    // (function initializePlayingDeck() {
-    //     console.log("initinaliziing");
-    //     playingDeck.current = [...props.route.params.mainDeck]
-    //         .sort(() => Math.random() - 0.5)
-    //         .slice(0, props.route.params.deckSize);
-    //     initialSampleDeck = playingDeck.current.slice(
-    //         0,
-    //         props.route.params.sampleDeckSize
-    //     );
-    // })();
 
     const [sampleDeck, setSampleDeck] = useState(
         playingDeck.current.slice(0, props.route.params.sampleDeckSize)
@@ -43,8 +30,11 @@ export default function Game(props) {
     const [score, setScore] = useState(0);
     const [bestScore, setBestScore] = useState(props.route.params.highscore);
     const prevBestScore = useRef(props.route.params.highscore);
-    const [timeLeft, setTimeLeft] = useState(props.route.params.time);
-    const tintColor = useRef("#72F11E");
+    const [currentTime, setCurrentTime] = useState(0);
+    const [cardsLeft, setCardsLeft] = useState(props.route.params.deckSize);
+    const goodColor = "#72F11E";
+    const badColor = "#E54C49";
+    const tintColor = useRef(goodColor);
     const seenCards = useRef([]);
     const stopTimer = useRef(false);
     const [confetti, setConfetti] = useState(false);
@@ -52,30 +42,25 @@ export default function Game(props) {
     useLayoutEffect(() => {
         if (stopTimer.current == false) {
             const timer = setTimeout(() => {
-                setTimeLeft(timeLeft - 1);
+                setCurrentTime(currentTime + 1);
             }, 1000);
-            if (timeLeft < 0) {
-                setGameStatus("lose");
+
+            if (bestScore > 0 && currentTime >= bestScore) {
+                tintColor.current = badColor;
             }
-            const time = props.route.params.time;
-            tintColor.current =
-                "#" +
-                calculateMiddleColor({
-                    color1: "E54C49",
-                    color2: "72F11E",
-                    ratio: timeLeft / time,
-                });
             // Clear timeout if the component is unmounted
             return () => clearTimeout(timer);
         }
-    }, [timeLeft]);
+    }, [currentTime]);
 
     useEffect(() => {
         if (gameStatus == "win" || gameStatus == "lose") {
-            if (props.route.params.loggedInUser) {
-                updateHighscore();
-            }
-            if (score > bestScore) {
+            setScore(currentTime);
+
+            if (
+                gameStatus == "win" &&
+                (currentTime < bestScore || bestScore == 0)
+            ) {
                 winSound();
                 setConfetti(true);
                 timerForConfetti();
@@ -85,6 +70,12 @@ export default function Game(props) {
             badSound();
         }
     }, [gameStatus]);
+
+    useEffect(() => {
+        if (gameStatus == "win") {
+            updateHighscore();
+        }
+    }, [score]);
 
     const timerForConfetti = () => {
         setTimeout(() => setConfetti(false), 5000);
@@ -150,32 +141,6 @@ export default function Game(props) {
         }
     };
 
-    const calculateMiddleColor = ({
-        color1 = "FF0000",
-        color2 = "00FF00",
-        ratio,
-    }) => {
-        const hex = (color) => {
-            const colorString = color.toString(16);
-            return colorString.length === 1 ? `0${colorString}` : colorString;
-        };
-
-        const r = Math.ceil(
-            parseInt(color2.substring(0, 2), 16) * ratio +
-                parseInt(color1.substring(0, 2), 16) * (1 - ratio)
-        );
-        const g = Math.ceil(
-            parseInt(color2.substring(2, 4), 16) * ratio +
-                parseInt(color1.substring(2, 4), 16) * (1 - ratio)
-        );
-        const b = Math.ceil(
-            parseInt(color2.substring(4, 6), 16) * ratio +
-                parseInt(color1.substring(4, 6), 16) * (1 - ratio)
-        );
-
-        return hex(r) + hex(g) + hex(b);
-    };
-
     const handleExitPress = () => {
         Alert.alert(
             "Exit Current Game",
@@ -183,7 +148,6 @@ export default function Game(props) {
             [
                 {
                     text: "Cancel",
-                    onPress: () => console.log("Cancel Pressed"),
                     style: "cancel",
                 },
                 {
@@ -197,43 +161,31 @@ export default function Game(props) {
 
     const handleBackToMenuPress = () => {
         soundPress();
+
         props.navigation.navigate("Home");
     };
 
     const handleCardPress = (card) => {
-        console.log("inside handle -------------------------");
         updateGameStatus(card);
     };
 
     const updateGameStatus = (card) => {
-        console.log("inside update gameStatus -------------------------");
-        console.log(card);
-        console.log("seencards -------------");
-        console.log(seenCards.current);
-        console.log(
-            seenCards.current.some((seenCard) => seenCard.key == card.key)
-        );
         if (seenCards.current.some((seenCard) => seenCard == card)) {
             stopTimer.current = true;
             setGameStatus("lose");
         } else if (seenCards.current.length + 1 == playingDeck.current.length) {
-            goodSound();
-            setScore(score + 1);
             stopTimer.current = true;
+            goodSound();
             setGameStatus("win");
         } else {
             goodSound();
-            setScore(score + 1);
+            setCardsLeft(cardsLeft - 1);
             seenCards.current = [...seenCards.current, card];
             showNewSampleDeck();
-            tintColor.current = "#72F11E";
-            setTimeLeft(props.route.params.time);
         }
     };
 
     const showNewSampleDeck = () => {
-        console.log("inside showNewSampleDeck -------------------------");
-
         const newSampleDeck = [];
         shufflePlayingDeck();
         newSampleDeck.push(getRandomSeenCard());
@@ -242,13 +194,8 @@ export default function Game(props) {
         let i = 0;
         while (newSampleDeck.length < props.route.params.sampleDeckSize) {
             const nextCard = playingDeck.current[i];
-            console.log(nextCard);
-            console.log(!newSampleDeck.some((card) => card == nextCard));
             if (!newSampleDeck.some((card) => card == nextCard)) {
                 newSampleDeck.push(nextCard);
-                console.log("added");
-            } else {
-                console.log("skipped");
             }
             i++;
         }
@@ -257,22 +204,10 @@ export default function Game(props) {
 
     const getRandomSeenCard = () => {
         const randomInt = getRandomInt(0, seenCards.current.length);
-        console.log("seenCards.current-----------------------------------");
-        console.log(seenCards.current);
-
-        console.log("randomSeenCard-----------------------------------");
-        console.log(seenCards.current[randomInt]);
         return seenCards.current[randomInt];
     };
 
     const getRandomUnseenCard = () => {
-        console.log("randomUnseenCard-----------------------------------");
-        console.log(
-            playingDeck.current.find(
-                (card) =>
-                    !seenCards.current.some((seenCard) => seenCard == card)
-            )
-        );
         return playingDeck.current.find(
             (card) => !seenCards.current.some((seenCard) => seenCard == card)
         );
@@ -286,8 +221,6 @@ export default function Game(props) {
     };
 
     const shufflePlayingDeck = () => {
-        console.log("inside shuffle deck-----------------------------------");
-
         playingDeck.current = [...playingDeck.current].sort(
             () => Math.random() - 0.5
         );
@@ -304,48 +237,33 @@ export default function Game(props) {
             playingDeck.current.slice(0, props.route.params.sampleDeckSize)
         );
         seenCards.current = [];
-        tintColor.current = "#72F11E";
-
-        setScore(0);
+        tintColor.current = goodColor;
         setGameStatus("playing");
+        setCardsLeft(props.route.params.deckSize);
+        setCurrentTime(0);
+        setScore(0);
         stopTimer.current = false;
-        setTimeLeft(props.route.params.time);
         prevBestScore.current = bestScore;
     };
 
     const updateHighscore = () => {
-        if (score > bestScore) {
+        if (bestScore == 0 || score < bestScore) {
             setBestScore(score);
             props.route.params.setCurrentHighscore(score);
-            if (props.route.params.gameMode == "normal") {
-                return firebase
-                    .firestore()
-                    .collection("users")
-                    .doc(props.route.params.loggedInUser.id)
-                    .update({
-                        highscore: score,
-                    })
-                    .then(function () {
-                        console.log("Document successfully updated!");
-                    })
-                    .catch(function (error) {
-                        console.error("Error updating document: ", error);
-                    });
-            } else if (props.route.params.gameMode == "speed") {
-                return firebase
-                    .firestore()
-                    .collection("users")
-                    .doc(props.route.params.loggedInUser.id)
-                    .update({
-                        speedScore: score,
-                    })
-                    .then(function () {
-                        console.log("Document successfully updated!");
-                    })
-                    .catch(function (error) {
-                        console.error("Error updating document: ", error);
-                    });
-            }
+
+            return firebase
+                .firestore()
+                .collection("users")
+                .doc(props.route.params.loggedInUser.id)
+                .update({
+                    timeScore: score,
+                })
+                .then(function () {
+                    console.log("Document successfully updated!");
+                })
+                .catch(function (error) {
+                    console.error("Error updating document: ", error);
+                });
         }
     };
 
@@ -355,6 +273,24 @@ export default function Game(props) {
         props.navigation.navigate("LeaderBoard", {
             loggedInUser: props.route.params.loggedInUser,
         });
+    };
+
+    const fancyTimeFormat = (duration) => {
+        // Hours, minutes and seconds
+        var hrs = ~~(duration / 3600);
+        var mins = ~~((duration % 3600) / 60);
+        var secs = ~~duration % 60;
+
+        // Output like "1:01" or "4:03:59" or "123:03:59"
+        var ret = "";
+
+        if (hrs > 0) {
+            ret += "" + hrs + ":" + (mins < 10 ? "0" : "");
+        }
+
+        ret += "" + mins + ":" + (secs < 10 ? "0" : "");
+        ret += "" + secs;
+        return ret;
     };
 
     return (
@@ -370,13 +306,12 @@ export default function Game(props) {
                     style={styles.confetti}
                     source={require("../assets/images/confetti.gif")}
                 >
-                    <Text style={styles.none}></Text>
+                    <Text style={styles.none}>{timerForConfetti()}</Text>
                 </ImageBackground>
             ) : (
                 <Text style={styles.none}></Text>
             )}
-            {(gameStatus == "lose" || gameStatus == "win") &&
-            score > prevBestScore.current ? (
+            {gameStatus == "win" && score < prevBestScore.current ? (
                 <View style={styles.newBestScore}>
                     <Text style={styles.newBestScoreText}>New Highscore!</Text>
                 </View>
@@ -387,11 +322,17 @@ export default function Game(props) {
             <View style={styles.scoreBoard}>
                 <View style={styles.currentScoreContainer}>
                     <Text style={styles.textTitle}>Current</Text>
-                    <Text style={styles.textCurrentScore}>{score}</Text>
+                    <Text style={styles.textCurrentScore}>
+                        {gameStatus == "win" || gameStatus == "lose"
+                            ? fancyTimeFormat(score)
+                            : fancyTimeFormat(currentTime)}
+                    </Text>
                 </View>
                 <View style={styles.bestScoreContainer}>
                     <Text style={styles.textTitle}>Best</Text>
-                    <Text style={styles.textBestScore}>{bestScore}</Text>
+                    <Text style={styles.textBestScore}>
+                        {fancyTimeFormat(bestScore)}
+                    </Text>
                 </View>
             </View>
             {gameStatus == "playing" ? (
@@ -418,15 +359,10 @@ export default function Game(props) {
                     {gameStatus == "lose" ? (
                         <View style={styles.gameEndContainer}>
                             <Text style={styles.gameEndTitle}>Game Over</Text>
-                            {stopTimer.current ? (
-                                <Text style={styles.reasonText}>
-                                    Oh no! You've already pressed that.
-                                </Text>
-                            ) : (
-                                <Text style={styles.reasonText}>
-                                    Oh no! You ran out of time.
-                                </Text>
-                            )}
+
+                            <Text style={styles.reasonText}>
+                                Oh no! You've already pressed that.
+                            </Text>
                         </View>
                     ) : (
                         <View style={styles.gameEndContainer}>
@@ -449,26 +385,16 @@ export default function Game(props) {
                     </View>
                 </View>
             )}
-            {timeLeft >= 0 && gameStatus == "playing" ? (
-                <View style={styles.timerContainer}>
-                    <AnimatedCircularProgress
-                        size={100}
-                        style={styles.timer}
-                        width={20}
-                        rotation={0}
-                        fill={100 - (timeLeft / props.route.params.time) * 100}
-                        tintColor="grey"
-                        backgroundColor={tintColor.current}
-                    >
-                        {(fill) => (
-                            <Text style={styles.timerText}>{timeLeft}</Text>
-                        )}
-                    </AnimatedCircularProgress>
+            {gameStatus == "playing" ? (
+                <View style={styles.cardsLeftContainer}>
+                    <View style={styles.cardsLeft}>
+                        <Text style={styles.cardsLeftText}>Cards</Text>
+                        <Text style={styles.cardsLeftNumText}>{cardsLeft}</Text>
+                    </View>
                 </View>
             ) : (
                 <Text></Text>
             )}
-
             <AdMobBanner
                 style={styles.ad}
                 adUnitID="ca-app-pub-3940256099942544/2934735716"
@@ -497,9 +423,6 @@ const styles = StyleSheet.create({
         padding: 20,
         zIndex: 5,
     },
-    none: {
-        display: "none",
-    },
     newBestScore: {
         justifyContent: "center",
         alignItems: "center",
@@ -507,9 +430,20 @@ const styles = StyleSheet.create({
     },
     newBestScoreText: {
         fontSize: 30,
-        fontWeight: "bold",
-
+        fontFamily: "nunito-bold",
         color: "#a0c4ff",
+    },
+    confetti: {
+        position: "absolute",
+        // resizeMode: "cover",
+        height: "104%",
+        top: 0,
+        zIndex: 5,
+        width: "100%",
+        flex: 1,
+    },
+    none: {
+        display: "none",
     },
     scoreBoard: {
         flexDirection: "row",
@@ -527,19 +461,10 @@ const styles = StyleSheet.create({
         alignItems: "center",
         width: 120,
     },
-    confetti: {
-        position: "absolute",
-        // resizeMode: "cover",
-        height: "104%",
-        top: 0,
-        zIndex: 5,
-        width: "100%",
-        flex: 1,
-    },
     textTitle: {
-        fontSize: 20,
+        fontSize: 22,
         paddingBottom: 10,
-        fontWeight: "bold",
+        fontFamily: "nunito-bold",
     },
     textBestScore: {
         color: "#1E72F1",
@@ -572,12 +497,17 @@ const styles = StyleSheet.create({
 
         elevation: 5,
     },
-    timerContainer: {
+    cardsLeftContainer: {
         justifyContent: "center",
         alignItems: "center",
-        marginBottom: 50,
+        marginBottom: 20,
     },
     timer: {
+        width: 120,
+        paddingVertical: 20,
+        borderWidth: 7,
+        borderRadius: 20,
+
         shadowColor: "#000",
         shadowOffset: {
             width: 2,
@@ -587,10 +517,28 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
 
         elevation: 5,
+        marginRight: 50,
     },
     timerText: {
         fontSize: 25,
-        fontWeight: "bold",
+        fontFamily: "nunito-bold",
+        textAlign: "center",
+    },
+    cardsLeft: {
+        paddingVertical: 20,
+        paddingHorizontal: 20,
+        marginBottom: 20,
+    },
+    cardsLeftText: {
+        fontFamily: "nunito-bold",
+        fontSize: 22,
+        marginBottom: 10,
+    },
+    cardsLeftNumText: {
+        fontSize: 25,
+        fontFamily: "nunito-bold",
+        textAlign: "center",
+        color: "grey",
     },
     gameEndContainer: {
         justifyContent: "center",
@@ -599,13 +547,14 @@ const styles = StyleSheet.create({
     },
     gameEndTitle: {
         fontSize: 35,
-        fontWeight: "bold",
+        fontFamily: "nunito-bold",
         marginBottom: 20,
     },
     reasonText: {
         fontSize: 20,
         width: Dimensions.get("screen").width / 1.2,
         textAlign: "center",
+        fontFamily: "nunito-regular",
     },
     buttonsContainer: {
         justifyContent: "center",
