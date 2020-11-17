@@ -1,25 +1,21 @@
-import React from "react";
+import React, { useRef } from "react";
 import firebase from "../firebase/config";
-import { StyleSheet, Text, View, TextInput } from "react-native";
+import {
+    StyleSheet,
+    Text,
+    View,
+    TextInput,
+    TouchableOpacity,
+} from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Formik } from "formik";
 import * as yup from "yup";
 import FlatButton from "../shared/flatButton";
 
+let cachedSnapshot = "empty";
+console.log(cachedSnapshot, "---------");
 const reviewSchema = yup.object({
-    email: yup
-        .string()
-        .email()
-        .required()
-        .test("unique_email", "Email already being used.", async (val) => {
-            const snapshot = await firebase
-                .firestore()
-                .collection("users")
-                .get();
-            const emails = snapshot.docs.map((doc) => doc.data().email);
-            console.log(emails);
-            return !emails.includes(val);
-        }),
+    email: yup.string().email().required(),
     password: yup.string().required().min(6),
     username: yup
         .string()
@@ -27,25 +23,34 @@ const reviewSchema = yup.object({
         .min(5)
         .max(15)
         .test("unique_username", "Username already taken.", async (val) => {
-            const snapshot = await firebase
-                .firestore()
-                .collection("users")
-                .get();
-            const usernames = snapshot.docs.map((doc) => doc.data().username);
-            console.log(usernames);
-            return !usernames.includes(val);
+            console.log(cachedSnapshot == "empty");
+            if (cachedSnapshot == "empty") {
+                console.log("request made");
+                cachedSnapshot = await firebase
+                    .firestore()
+                    .collection("usernames")
+                    .get();
+            }
+
+            const usernamesObject = cachedSnapshot.docs.map((doc) =>
+                doc.data()
+            );
+            const usernamesArray = Object.values(usernamesObject[0]);
+
+            return !usernamesArray.includes(val);
         }),
 });
 
 export default function RegisterForm(props) {
-    const registerNewUser = (values) => {
-        firebase
+    const uid = useRef();
+    const registerNewUser = async (values) => {
+        await firebase
             .auth()
             .createUserWithEmailAndPassword(values.email, values.password)
             .then((response) => {
-                const uid = response.user.uid;
+                uid.current = response.user.uid;
                 const data = {
-                    id: uid,
+                    id: uid.current,
                     email: values.email,
                     username: values.username,
                     password: values.password,
@@ -55,9 +60,26 @@ export default function RegisterForm(props) {
                 };
                 const usersRef = firebase.firestore().collection("users");
                 usersRef
-                    .doc(uid)
+                    .doc(uid.current)
                     .set(data)
                     .then(() => {
+                        firebase
+                            .firestore()
+                            .collection("usernames")
+                            .doc("usernamesDoc")
+                            .update({
+                                [uid.current]: values.username,
+                            })
+                            .then(function () {
+                                console.log("Document successfully updated!");
+                            })
+                            .catch(function (error) {
+                                console.error(
+                                    "Error updating document: ",
+                                    error
+                                );
+                            });
+                        cachedSnapshot = "empty";
                         props.setLoggedInUser(data);
                         props.closeModal();
                     })
@@ -76,7 +98,10 @@ export default function RegisterForm(props) {
                 name="close"
                 size={24}
                 style={styles.exitButton}
-                onPress={props.closeModal}
+                onPress={() => {
+                    cachedSnapshot = "empty";
+                    props.closeModal();
+                }}
             />
             <Formik
                 initialValues={{ email: "", username: "", password: "" }}
@@ -131,6 +156,14 @@ export default function RegisterForm(props) {
                     </View>
                 )}
             </Formik>
+            <View style={styles.loginContainer}>
+                <Text style={styles.loginSentence}>
+                    Already have an account?{" "}
+                    <TouchableOpacity onPress={props.switchModal}>
+                        <Text style={styles.loginText}>Login</Text>
+                    </TouchableOpacity>
+                </Text>
+            </View>
         </View>
     );
 }
@@ -160,5 +193,19 @@ const styles = StyleSheet.create({
         color: "red",
         fontWeight: "bold",
         marginBottom: 10,
+    },
+    loginSentence: {
+        fontFamily: "nunito-light",
+        fontSize: 16,
+        marginLeft: 30,
+    },
+    loginContainer: {
+        justifyContent: "center",
+    },
+    loginText: {
+        fontFamily: "nunito-bold",
+        fontSize: 16,
+        color: "black",
+        transform: [{ translateY: 3 }],
     },
 });

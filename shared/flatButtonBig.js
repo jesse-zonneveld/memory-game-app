@@ -1,7 +1,12 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-export default function FlatButtonBig({ title, onPress, color }) {
+export default function FlatButtonBig({
+    title,
+    onPress,
+    color,
+    getGamesPlayed = 0,
+}) {
     return (
         <TouchableOpacity onPress={onPress}>
             <View style={[styles.button, { backgroundColor: color }]}>

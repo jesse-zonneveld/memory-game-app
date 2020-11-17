@@ -15,7 +15,7 @@ import firebase from "../firebase/config";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { AnimatedCircularProgress } from "react-native-circular-progress";
 import { Audio } from "expo-av";
-import { AdMobBanner } from "expo-ads-admob";
+import { AdMobBanner, AdMobInterstitial } from "expo-ads-admob";
 
 export default function Game(props) {
     const playingDeck = useRef(
@@ -23,18 +23,6 @@ export default function Game(props) {
             .sort(() => Math.random() - 0.5)
             .slice(0, props.route.params.deckSize)
     );
-    // let initialSampleDeck = [];
-
-    // (function initializePlayingDeck() {
-    //     console.log("initinaliziing");
-    //     playingDeck.current = [...props.route.params.mainDeck]
-    //         .sort(() => Math.random() - 0.5)
-    //         .slice(0, props.route.params.deckSize);
-    //     initialSampleDeck = playingDeck.current.slice(
-    //         0,
-    //         props.route.params.sampleDeckSize
-    //     );
-    // })();
 
     const [sampleDeck, setSampleDeck] = useState(
         playingDeck.current.slice(0, props.route.params.sampleDeckSize)
@@ -72,7 +60,11 @@ export default function Game(props) {
 
     useEffect(() => {
         if (gameStatus == "win" || gameStatus == "lose") {
+            props.route.params.increaseGamesPlayed();
+
             if (props.route.params.loggedInUser) {
+                updateHighscoreLoggedIn();
+            } else {
                 updateHighscore();
             }
             if (score > bestScore) {
@@ -201,18 +193,10 @@ export default function Game(props) {
     };
 
     const handleCardPress = (card) => {
-        console.log("inside handle -------------------------");
         updateGameStatus(card);
     };
 
     const updateGameStatus = (card) => {
-        console.log("inside update gameStatus -------------------------");
-        console.log(card);
-        console.log("seencards -------------");
-        console.log(seenCards.current);
-        console.log(
-            seenCards.current.some((seenCard) => seenCard.key == card.key)
-        );
         if (seenCards.current.some((seenCard) => seenCard == card)) {
             stopTimer.current = true;
             setGameStatus("lose");
@@ -232,65 +216,112 @@ export default function Game(props) {
     };
 
     const showNewSampleDeck = () => {
-        console.log("inside showNewSampleDeck -------------------------");
-
         const newSampleDeck = [];
         shufflePlayingDeck();
-        newSampleDeck.push(getRandomSeenCard());
+        getRandomSeenCards().forEach((card) => newSampleDeck.push(card));
         newSampleDeck.push(getRandomUnseenCard());
 
         let i = 0;
         while (newSampleDeck.length < props.route.params.sampleDeckSize) {
             const nextCard = playingDeck.current[i];
-            console.log(nextCard);
-            console.log(!newSampleDeck.some((card) => card == nextCard));
+
             if (!newSampleDeck.some((card) => card == nextCard)) {
                 newSampleDeck.push(nextCard);
-                console.log("added");
-            } else {
-                console.log("skipped");
             }
             i++;
         }
+
         setSampleDeck(newSampleDeck.sort(() => Math.random() - 0.5));
     };
 
-    const getRandomSeenCard = () => {
-        const randomInt = getRandomInt(0, seenCards.current.length);
-        console.log("seenCards.current-----------------------------------");
-        console.log(seenCards.current);
+    const getRandomSeenCards = () => {
+        const shuffledSeenCards = [...seenCards.current].sort(
+            () => Math.random() - 0.5
+        );
 
-        console.log("randomSeenCard-----------------------------------");
-        console.log(seenCards.current[randomInt]);
-        return seenCards.current[randomInt];
+        const cardsToAdd = [];
+        if (props.route.params.gameMode == "normal") {
+            if (shuffledSeenCards.length < 5) {
+                for (let i = 0; i < shuffledSeenCards.length; i++) {
+                    cardsToAdd.push(shuffledSeenCards[i]);
+                }
+            } else if (shuffledSeenCards.length < 50) {
+                for (let i = 0; i < 5; i++) {
+                    cardsToAdd.push(shuffledSeenCards[i]);
+                }
+            } else if (shuffledSeenCards.length < 200) {
+                for (let i = 0; i < 3; i++) {
+                    cardsToAdd.push(shuffledSeenCards[i]);
+                }
+            } else {
+                cardsToAdd.push(shuffledSeenCards.pop());
+            }
+        } else {
+            if (shuffledSeenCards.length % 5 == 0) {
+                for (let i = 0; i < 2; i++) {
+                    cardsToAdd.push(shuffledSeenCards[i]);
+                }
+            } else {
+                cardsToAdd.push(shuffledSeenCards.pop());
+            }
+        }
+        return cardsToAdd;
     };
 
     const getRandomUnseenCard = () => {
-        console.log("randomUnseenCard-----------------------------------");
-        console.log(
-            playingDeck.current.find(
-                (card) =>
-                    !seenCards.current.some((seenCard) => seenCard == card)
-            )
-        );
         return playingDeck.current.find(
             (card) => !seenCards.current.some((seenCard) => seenCard == card)
         );
     };
 
-    const getRandomInt = (min, max) => {
-        min = Math.ceil(min);
-        max = Math.floor(max);
-        const randomInt = Math.floor(Math.random() * (max - min) + min);
-        return randomInt;
-    };
-
     const shufflePlayingDeck = () => {
-        console.log("inside shuffle deck-----------------------------------");
-
         playingDeck.current = [...playingDeck.current].sort(
             () => Math.random() - 0.5
         );
+    };
+
+    const checkForAd = () => {
+        if (
+            props.route.params.getGamesPlayed() % 5 == 0 &&
+            props.route.params.getGamesPlayed() != 0
+        ) {
+            AdMobInterstitial.addEventListener("interstitialDidLoad", () =>
+                console.log("videoloaded")
+            );
+            AdMobInterstitial.addEventListener(
+                "interstitialDidFailToLoad",
+                () => console.log("failedtoload")
+            );
+            AdMobInterstitial.addEventListener("interstitialDidOpen", () =>
+                console.log("opened")
+            );
+            AdMobInterstitial.addEventListener(
+                "interstitialWillLeaveApplication",
+                () => console.log("leaveapp")
+            );
+            AdMobInterstitial.addEventListener("interstitialDidClose", () => {
+                restartGame();
+                removeListenersForAd();
+                props.route.params.increaseGamesPlayed();
+            });
+            showVideoAd();
+        } else {
+            restartGame();
+        }
+    };
+
+    const showVideoAd = async () => {
+        await AdMobInterstitial.setAdUnitID(
+            "ca-app-pub-3940256099942544/5135589807" // test
+        );
+        await AdMobInterstitial.requestAdAsync({
+            servePersonalizedAds: true,
+        });
+        await AdMobInterstitial.showAdAsync();
+    };
+
+    const removeListenersForAd = () => {
+        AdMobInterstitial.removeAllListeners();
     };
 
     const restartGame = () => {
@@ -315,9 +346,34 @@ export default function Game(props) {
 
     const updateHighscore = () => {
         if (score > bestScore) {
+            if (props.route.params.gameMode == "normal") {
+                props.route.params.storeData("highscore", score.toString());
+                setBestScore(score);
+                props.route.params.setCurrentHighscore(score);
+            } else if (props.route.params.gameMode == "speed") {
+                props.route.params.storeData("speedScore", score.toString());
+                setBestScore(score);
+                props.route.params.setCurrentSpeedScore(score);
+            }
+        }
+    };
+
+    const updateHighscoreLoggedIn = () => {
+        if (score > bestScore) {
             setBestScore(score);
             props.route.params.setCurrentHighscore(score);
             if (props.route.params.gameMode == "normal") {
+                props.route.params.storeData("highscore", score.toString());
+
+                if (props.route.params.getHighscoresRef()) {
+                    if (
+                        props.route.params.getHighscoresRef()[
+                            props.route.params.getHighscoresRef().length - 1
+                        ].highscore < score
+                    ) {
+                        props.route.params.setHighscoresRef("empty");
+                    }
+                }
                 return firebase
                     .firestore()
                     .collection("users")
@@ -332,6 +388,17 @@ export default function Game(props) {
                         console.error("Error updating document: ", error);
                     });
             } else if (props.route.params.gameMode == "speed") {
+                props.route.params.storeData("speedScore", score.toString());
+
+                if (props.route.params.getSpeedScoresRef()) {
+                    if (
+                        props.route.params.getSpeedScoresRef()[
+                            props.route.params.getSpeedScoresRef().length - 1
+                        ].highscore < score
+                    ) {
+                        props.route.params.setSpeedScoresRef("empty");
+                    }
+                }
                 return firebase
                     .firestore()
                     .collection("users")
@@ -354,6 +421,20 @@ export default function Game(props) {
 
         props.navigation.navigate("LeaderBoard", {
             loggedInUser: props.route.params.loggedInUser,
+            getHighscoresRef: props.route.params.getHighscoresRef,
+            getSpeedScoresRef: props.route.params.getSpeedScoresRef,
+            getTimeScoresRef: props.route.params.getTimeScoresRef,
+            setHighscoresRef: props.route.params.setHighscoresRef,
+            setSpeedScoresRef: props.route.params.setSpeedScoresRef,
+            setTimeScoresRef: props.route.params.setTimeScoresRef,
+            getCurrentHighscoreRank: props.route.params.getCurrentHighscoreRank,
+            getCurrentSpeedScoreRank:
+                props.route.params.getCurrentSpeedScoreRank,
+            getCurrentTimeScoreRank: props.route.params.getCurrentTimeScoreRank,
+            setCurrentHighscoreRank: props.route.params.setCurrentHighscoreRank,
+            setCurrentSpeedScoreRank:
+                props.route.params.setCurrentSpeedScoreRank,
+            setCurrentTimeScoreRank: props.route.params.setCurrentTimeScoreRank,
         });
     };
 
@@ -437,9 +518,22 @@ export default function Game(props) {
                         </View>
                     )}
                     <View style={styles.buttonsContainer}>
-                        <FlatButton title="Play Again" onPress={restartGame} />
+                        {props.route.params.getGamesPlayed() % 5 == 0 &&
+                        props.route.params.getGamesPlayed() != 0 ? (
+                            <FlatButton
+                                title="Play Again"
+                                withVideo={true}
+                                onPress={checkForAd}
+                            />
+                        ) : (
+                            <FlatButton
+                                title="Play Again"
+                                onPress={checkForAd}
+                            />
+                        )}
                         <FlatButton
                             title="Leader Board"
+                            withVideo={true}
                             onPress={handleLeaderBoardPress}
                         />
                         <FlatButton

@@ -14,7 +14,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import firebase from "../firebase/config";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { Audio } from "expo-av";
-import { AdMobBanner } from "expo-ads-admob";
+import { AdMobBanner, AdMobInterstitial } from "expo-ads-admob";
 
 export default function TimeGame(props) {
     const playingDeck = useRef(
@@ -55,6 +55,7 @@ export default function TimeGame(props) {
 
     useEffect(() => {
         if (gameStatus == "win" || gameStatus == "lose") {
+            props.route.params.increaseGamesPlayed();
             setScore(currentTime);
 
             if (
@@ -73,7 +74,11 @@ export default function TimeGame(props) {
 
     useEffect(() => {
         if (gameStatus == "win") {
-            updateHighscore();
+            if (props.route.params.loggedInUser) {
+                updateHighscoreLoggedIn();
+            } else {
+                updateHighscore();
+            }
         }
     }, [score]);
 
@@ -226,6 +231,51 @@ export default function TimeGame(props) {
         );
     };
 
+    const checkForAd = () => {
+        if (
+            props.route.params.getGamesPlayed() % 5 == 0 &&
+            props.route.params.getGamesPlayed() != 0
+        ) {
+            stopTimer.current = false;
+            AdMobInterstitial.addEventListener("interstitialDidLoad", () =>
+                console.log("videoloaded")
+            );
+            AdMobInterstitial.addEventListener(
+                "interstitialDidFailToLoad",
+                () => console.log("failedtoload")
+            );
+            AdMobInterstitial.addEventListener("interstitialDidOpen", () =>
+                console.log("opened")
+            );
+            AdMobInterstitial.addEventListener(
+                "interstitialWillLeaveApplication",
+                () => console.log("leaveapp")
+            );
+            AdMobInterstitial.addEventListener("interstitialDidClose", () => {
+                removeListenersForAd();
+                props.route.params.increaseGamesPlayed();
+                restartGame();
+            });
+            showVideoAd();
+        } else {
+            restartGame();
+        }
+    };
+
+    const showVideoAd = async () => {
+        await AdMobInterstitial.setAdUnitID(
+            "ca-app-pub-3940256099942544/5135589807" // test
+        );
+        await AdMobInterstitial.requestAdAsync({
+            servePersonalizedAds: true,
+        });
+        await AdMobInterstitial.showAdAsync();
+    };
+
+    const removeListenersForAd = () => {
+        AdMobInterstitial.removeAllListeners();
+    };
+
     const restartGame = () => {
         soundPress();
 
@@ -247,9 +297,26 @@ export default function TimeGame(props) {
     };
 
     const updateHighscore = () => {
+        if (score < bestScore) {
+            props.route.params.storeData("timeScore", score.toString());
+            setBestScore(score);
+            props.route.params.setCurrentTimeScore(score);
+        }
+    };
+
+    const updateHighscoreLoggedIn = () => {
         if (bestScore == 0 || score < bestScore) {
             setBestScore(score);
             props.route.params.setCurrentHighscore(score);
+            if (props.route.params.getTimeScoresRef()) {
+                if (
+                    props.route.params.getTimeScoresRef()[
+                        props.route.params.getTimeScoresRef().length - 1
+                    ].highscore > score
+                ) {
+                    props.route.params.setTimeScoresRef("empty");
+                }
+            }
 
             return firebase
                 .firestore()
@@ -272,6 +339,20 @@ export default function TimeGame(props) {
 
         props.navigation.navigate("LeaderBoard", {
             loggedInUser: props.route.params.loggedInUser,
+            getHighscoresRef: props.route.params.getHighscoresRef,
+            getSpeedScoresRef: props.route.params.getSpeedScoresRef,
+            getTimeScoresRef: props.route.params.getTimeScoresRef,
+            setHighscoresRef: props.route.params.setHighscoresRef,
+            setSpeedScoresRef: props.route.params.setSpeedScoresRef,
+            setTimeScoresRef: props.route.params.setTimeScoresRef,
+            getCurrentHighscoreRank: props.route.params.getCurrentHighscoreRank,
+            getCurrentSpeedScoreRank:
+                props.route.params.getCurrentSpeedScoreRank,
+            getCurrentTimeScoreRank: props.route.params.getCurrentTimeScoreRank,
+            setCurrentHighscoreRank: props.route.params.setCurrentHighscoreRank,
+            setCurrentSpeedScoreRank:
+                props.route.params.setCurrentSpeedScoreRank,
+            setCurrentTimeScoreRank: props.route.params.setCurrentTimeScoreRank,
         });
     };
 
@@ -373,9 +454,23 @@ export default function TimeGame(props) {
                         </View>
                     )}
                     <View style={styles.buttonsContainer}>
-                        <FlatButton title="Play Again" onPress={restartGame} />
+                        {props.route.params.getGamesPlayed() % 5 == 0 &&
+                        props.route.params.getGamesPlayed() != 0 ? (
+                            <FlatButton
+                                title="Play Again"
+                                withVideo={true}
+                                onPress={checkForAd}
+                            />
+                        ) : (
+                            <FlatButton
+                                title="Play Again"
+                                onPress={checkForAd}
+                            />
+                        )}
+
                         <FlatButton
                             title="Leader Board"
+                            withVideo={true}
                             onPress={handleLeaderBoardPress}
                         />
                         <FlatButton

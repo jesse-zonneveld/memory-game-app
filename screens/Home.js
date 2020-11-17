@@ -18,60 +18,152 @@ import RegisterForm from "./Register";
 import { Audio } from "expo-av";
 
 import { AdMobBanner } from "expo-ads-admob";
+import { AsyncStorage } from "react-native";
 
 export default function Home(props) {
-    console.log(props.extraData.mainDeck);
     const [modalStatus, setModalStatus] = useState("closed");
     const [loggedInUser, setLoggedInUser] = useState(props.extraData.userData);
     const [currentHighscore, setCurrentHighscore] = useState(0);
     const [currentSpeedScore, setCurrentSpeedScore] = useState(0);
     const [currentTimeScore, setCurrentTimeScore] = useState(0);
+    const gamesPlayed = useRef(0);
+    const highscoresRef = useRef("empty");
+    const speedScoresRef = useRef("empty");
+    const timeScoresRef = useRef("empty");
+    const currentHighscoreRank = useRef();
+    const currentSpeedScoreRank = useRef();
+    const currentTimeScoreRank = useRef();
 
     useLayoutEffect(() => {
         if (loggedInUser) {
             setCurrentHighscore(loggedInUser.highscore);
             setCurrentSpeedScore(loggedInUser.speedScore);
             setCurrentTimeScore(loggedInUser.timeScore);
+            retrieveData("highscore");
+            retrieveData("speedScore");
+            retrieveData("timeScore");
+            // storeData("highscore", loggedInUser.highscore.toString());
+            // storeData("speedScore", loggedInUser.speedScore.toString());
+            // storeData("timeScore", loggedInUser.timeScore.toString());
+        } else {
+            retrieveData("highscore");
+            retrieveData("speedScore");
+            retrieveData("timeScore");
+            setTimeout(() => setModalStatus("reg"), 2000);
+            console.log(currentHighscore, currentSpeedScore);
         }
     }, [loggedInUser]);
 
-    // const mainDeck = [];
+    const storeData = async (key, value) => {
+        try {
+            await AsyncStorage.setItem(key, value);
+            console.log(key, value, " stored");
+        } catch (error) {
+            console.log("error storing data");
+        }
+    };
 
-    // (function initializeMainDeck() {
-    //     for (let i = 0; i < 100; i++) {
-    //         mainDeck.push({
-    //             key: i,
-    //             icon: "a",
-    //         });
-    //     }
-    // })();
+    const retrieveData = async (key) => {
+        let value = 0;
+        try {
+            value = await AsyncStorage.getItem(key);
+            if (value !== null) {
+                console.log(loggedInUser);
+                if (loggedInUser) {
+                    if (key == "highscore") {
+                        console.log("highscore", value);
+                        if (+value > loggedInUser.highscore) {
+                            setCurrentHighscore(+value);
+                            return firebase
+                                .firestore()
+                                .collection("users")
+                                .doc(loggedInUser.id)
+                                .update({
+                                    highscore: +value,
+                                })
+                                .then(function () {
+                                    console.log(
+                                        "Document successfully updated!"
+                                    );
+                                    storeData("highscore", "0");
+                                })
+                                .catch(function (error) {
+                                    console.error(
+                                        "Error updating document: ",
+                                        error
+                                    );
+                                });
+                        }
+                    } else if (key == "speedScore") {
+                        console.log("speedScore", value);
+                        if (+value > loggedInUser.speedScore) {
+                            setCurrentSpeedScore(+value);
 
-    // const updateCurrentHighscore = (score) => {
-    //     currentHighscore.current = score;
-    // };
+                            return firebase
+                                .firestore()
+                                .collection("users")
+                                .doc(loggedInUser.id)
+                                .update({
+                                    speedScore: +value,
+                                })
+                                .then(function () {
+                                    console.log(
+                                        "Document successfully updated!"
+                                    );
+                                    storeData("speedScore", "0");
+                                })
+                                .catch(function (error) {
+                                    console.error(
+                                        "Error updating document: ",
+                                        error
+                                    );
+                                });
+                        }
+                    } else if (key == "timeScore") {
+                        console.log("timeScore", value);
+                        if (+value > loggedInUser.timeScore) {
+                            setCurrentTimeScore(+value);
 
-    // const handleStartGamePress = (time, deckSize, sampleDeckSize) => {
-    //     if (loggedInUser) {
-    //         props.navigation.navigate("Game", {
-    //             loggedInUser: loggedInUser,
-    //             highscore: currentHighscore,
-    //             setCurrentHighscore: setCurrentHighscore,
-    //             time,
-    //             deckSize,
-    //             sampleDeckSize,
-    //             mainDeck: props.extraData.mainDeck,
-    //         });
-    //     } else {
-    //         props.navigation.navigate("Game", {
-    //             loggedInUser: null,
-    //             highscore: 0,
-    //             time,
-    //             deckSize,
-    //             sampleDeckSize,
-    //             mainDeck: props.extraData.mainDeck,
-    //         });
-    //     }
-    // };
+                            return firebase
+                                .firestore()
+                                .collection("users")
+                                .doc(loggedInUser.id)
+                                .update({
+                                    timeScore: +value,
+                                })
+                                .then(function () {
+                                    console.log(
+                                        "Document successfully updated!"
+                                    );
+                                    storeData("timeScore", "0");
+                                })
+                                .catch(function (error) {
+                                    console.error(
+                                        "Error updating document: ",
+                                        error
+                                    );
+                                });
+                        }
+                    }
+                } else {
+                    if (key == "highscore") {
+                        console.log("highscore", value);
+                        setCurrentHighscore(+value);
+                    } else if (key == "speedScore") {
+                        console.log("speedScore", +value);
+                        setCurrentSpeedScore(+value);
+                    } else if (key == "timeScore") {
+                        console.log("timeScore", value);
+                        setCurrentTimeScore(+value);
+                    }
+                }
+            } else {
+                console.log(key, " empty");
+            }
+        } catch (error) {
+            console.log("error retreiving data");
+        }
+    };
 
     const soundPress = async () => {
         try {
@@ -88,12 +180,72 @@ export default function Home(props) {
         }
     };
 
+    const increaseGamesPlayed = () => {
+        gamesPlayed.current = gamesPlayed.current + 1;
+    };
+
+    const getGamesPlayed = () => {
+        return gamesPlayed.current;
+    };
+
     const handleLeaderBoardPress = () => {
         soundPress();
 
         props.navigation.navigate("LeaderBoard", {
             loggedInUser: loggedInUser,
+            getHighscoresRef: getHighscoresRef,
+            getSpeedScoresRef: getSpeedScoresRef,
+            getTimeScoresRef: getTimeScoresRef,
+            setHighscoresRef: setHighscoresRef,
+            setSpeedScoresRef: setSpeedScoresRef,
+            setTimeScoresRef: setTimeScoresRef,
+            getCurrentHighscoreRank: getCurrentHighscoreRank,
+            getCurrentSpeedScoreRank: getCurrentSpeedScoreRank,
+            getCurrentTimeScoreRank: getCurrentTimeScoreRank,
+            setCurrentHighscoreRank: setCurrentHighscoreRank,
+            setCurrentSpeedScoreRank: setCurrentSpeedScoreRank,
+            setCurrentTimeScoreRank: setCurrentTimeScoreRank,
         });
+    };
+
+    const setHighscoresRef = (highscores) => {
+        highscoresRef.current = highscores;
+    };
+    const setSpeedScoresRef = (highscores) => {
+        speedScoresRef.current = highscores;
+    };
+    const setTimeScoresRef = (highscores) => {
+        timeScoresRef.current = highscores;
+    };
+
+    const getHighscoresRef = () => {
+        return highscoresRef.current;
+    };
+    const getSpeedScoresRef = () => {
+        return speedScoresRef.current;
+    };
+    const getTimeScoresRef = () => {
+        return timeScoresRef.current;
+    };
+
+    const setCurrentHighscoreRank = (rank) => {
+        currentHighscoreRank.current = rank;
+    };
+    const setCurrentSpeedScoreRank = (rank) => {
+        currentSpeedScoreRank.current = rank;
+    };
+    const setCurrentTimeScoreRank = (rank) => {
+        currentTimeScoreRank.current = rank;
+    };
+
+    const getCurrentHighscoreRank = () => {
+        return currentHighscoreRank.current;
+    };
+    const getCurrentSpeedScoreRank = () => {
+        return currentSpeedScoreRank.current;
+    };
+    const getCurrentTimeScoreRank = () => {
+        return currentTimeScoreRank.current;
     };
 
     const handleSandboxPress = () => {
@@ -110,6 +262,16 @@ export default function Home(props) {
                 console.log("user logged out:");
             });
         setLoggedInUser(null);
+        setCurrentHighscore(0);
+        setCurrentSpeedScore(0);
+        setCurrentTimeScore(0);
+        setCurrentHighscoreRank();
+        setCurrentSpeedScoreRank();
+        setCurrentTimeScoreRank();
+        gamesPlayed.current = 0;
+        highscoresRef.current = "empty";
+        speedScoresRef.current = "empty";
+        timeScoresRef.current = "empty";
     };
 
     // const handleAddHighScorePress = () => {
@@ -147,12 +309,48 @@ export default function Home(props) {
                 setCurrentSpeedScore: setCurrentSpeedScore,
                 setCurrentTimeScore: setCurrentTimeScore,
                 mainDeck: props.extraData.mainDeck,
+                getGamesPlayed: getGamesPlayed,
+                increaseGamesPlayed: increaseGamesPlayed,
+                setHighscoresRef: setHighscoresRef,
+                setSpeedScoresRef: setSpeedScoresRef,
+                setTimeScoresRef: setTimeScoresRef,
+                getHighscoresRef: getHighscoresRef,
+                getSpeedScoresRef: getSpeedScoresRef,
+                getTimeScoresRef: getTimeScoresRef,
+                getCurrentHighscoreRank: getCurrentHighscoreRank,
+                getCurrentSpeedScoreRank: getCurrentSpeedScoreRank,
+                getCurrentTimeScoreRank: getCurrentTimeScoreRank,
+                setCurrentHighscoreRank: setCurrentHighscoreRank,
+                setCurrentSpeedScoreRank: setCurrentSpeedScoreRank,
+                setCurrentTimeScoreRank: setCurrentTimeScoreRank,
+                storeData: storeData,
             });
         } else {
+            console.log(currentHighscore, currentSpeedScore);
             props.navigation.navigate("GameModes", {
                 loggedInUser: null,
-                currenHighscore: 0,
+                currentHighscore: currentHighscore,
+                currentSpeedScore: currentSpeedScore,
+                currentTimeScore: currentTimeScore,
+                setCurrentHighscore: setCurrentHighscore,
+                setCurrentSpeedScore: setCurrentSpeedScore,
+                setCurrentTimeScore: setCurrentTimeScore,
                 mainDeck: props.extraData.mainDeck,
+                getGamesPlayed: getGamesPlayed,
+                increaseGamesPlayed: increaseGamesPlayed,
+                setHighscoresRef: setHighscoresRef,
+                setSpeedScoresRef: setSpeedScoresRef,
+                setTimeScoresRef: setTimeScoresRef,
+                getHighscoresRef: getHighscoresRef,
+                getSpeedScoresRef: getSpeedScoresRef,
+                getTimeScoresRef: getTimeScoresRef,
+                getCurrentHighscoreRank: getCurrentHighscoreRank,
+                getCurrentSpeedScoreRank: getCurrentSpeedScoreRank,
+                getCurrentTimeScoreRank: getCurrentTimeScoreRank,
+                setCurrentHighscoreRank: setCurrentHighscoreRank,
+                setCurrentSpeedScoreRank: setCurrentSpeedScoreRank,
+                setCurrentTimeScoreRank: setCurrentTimeScoreRank,
+                storeData: storeData,
             });
         }
     };
@@ -242,7 +440,8 @@ export default function Home(props) {
                     onPress={handleHowToPlayPress}
                 />
                 <FlatButton
-                    title="Leader Board"
+                    title={"Leader Board"}
+                    withVideo={true}
                     onPress={handleLeaderBoardPress}
                 />
                 {loggedInUser ? (
@@ -276,6 +475,7 @@ export default function Home(props) {
 
                         <RegisterForm
                             closeModal={() => setModalStatus("closed")}
+                            switchModal={() => setModalStatus("login")}
                             setLoggedInUser={(user) => setLoggedInUser(user)}
                         />
                     </View>
@@ -287,6 +487,7 @@ export default function Home(props) {
                         <Text style={styles.modalTitle}>Welcome Back!</Text>
                         <LoginForm
                             closeModal={() => setModalStatus("closed")}
+                            switchModal={() => setModalStatus("reg")}
                             setLoggedInUser={(user) => setLoggedInUser(user)}
                         />
                     </View>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
     StyleSheet,
     Text,
@@ -12,11 +12,41 @@ import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import ScrollingBackground from "react-native-scrolling-images";
 import { Audio } from "expo-av";
-import { AdMobBanner } from "expo-ads-admob";
+import { AdMobBanner, AdMobInterstitial } from "expo-ads-admob";
 
 export default function GameModes(props) {
+    const selectedGameMode = useRef();
+    useEffect(() => {
+        AdMobInterstitial.addEventListener("interstitialDidLoad", () =>
+            console.log("videoloaded")
+        );
+        AdMobInterstitial.addEventListener("interstitialDidFailToLoad", () =>
+            console.log("failedtoload")
+        );
+        AdMobInterstitial.addEventListener("interstitialDidOpen", () =>
+            console.log("opened")
+        );
+        AdMobInterstitial.addEventListener(
+            "interstitialWillLeaveApplication",
+            () => console.log("leaveapp")
+        );
+        AdMobInterstitial.addEventListener("interstitialDidClose", () => {
+            if (selectedGameMode.current == "normal") {
+                startNormalGame();
+            } else if (selectedGameMode.current == "speed") {
+                startSpeedGame();
+            } else {
+                startTimeGame();
+            }
+            props.route.params.increaseGamesPlayed();
+        });
+    }, []);
     const handleBackToMenuPress = () => {
         props.navigation.navigate("Home");
+    };
+
+    const removeListenersForAd = () => {
+        AdMobInterstitial.removeAllListeners();
     };
 
     const soundPress = async () => {
@@ -34,86 +64,277 @@ export default function GameModes(props) {
         }
     };
 
-    const handleNormalGamePress = (
-        gameMode,
-        time,
-        deckSize,
-        sampleDeckSize
-    ) => {
-        soundPress();
+    const showVideoAd = async () => {
+        await AdMobInterstitial.setAdUnitID(
+            "ca-app-pub-3940256099942544/5135589807" // test
+        );
+        await AdMobInterstitial.requestAdAsync({
+            servePersonalizedAds: true,
+        });
+        await AdMobInterstitial.showAdAsync();
+    };
+
+    const startNormalGame = () => {
+        removeListenersForAd();
         if (props.route.params.loggedInUser) {
             props.navigation.navigate("Game", {
                 loggedInUser: props.route.params.loggedInUser,
                 highscore: props.route.params.currentHighscore,
                 setCurrentHighscore: props.route.params.setCurrentHighscore,
-                gameMode,
-                time,
-                deckSize,
-                sampleDeckSize,
+                gameMode: "normal",
+                time: 15,
+                deckSize: 400,
+                sampleDeckSize: 9,
                 mainDeck: props.route.params.mainDeck,
+                getGamesPlayed: props.route.params.getGamesPlayed,
+                increaseGamesPlayed: props.route.params.increaseGamesPlayed,
+                setHighscoresRef: props.route.params.setHighscoresRef,
+                getHighscoresRef: props.route.params.getHighscoresRef,
+                setSpeedScoresRef: props.route.params.setSpeedScoresRef,
+                getSpeedScoresRef: props.route.params.getSpeedScoresRef,
+                setTimeScoresRef: props.route.params.setTimeScoresRef,
+                getTimeScoresRef: props.route.params.getTimeScoresRef,
+                getCurrentHighscoreRank:
+                    props.route.params.getCurrentHighscoreRank,
+                getCurrentSpeedScoreRank:
+                    props.route.params.getCurrentSpeedScoreRank,
+                getCurrentTimeScoreRank:
+                    props.route.params.getCurrentTimeScoreRank,
+                setCurrentHighscoreRank:
+                    props.route.params.setCurrentHighscoreRank,
+                setCurrentSpeedScoreRank:
+                    props.route.params.setCurrentSpeedScoreRank,
+                setCurrentTimeScoreRank:
+                    props.route.params.setCurrentTimeScoreRank,
+                storeData: props.route.params.storeData,
             });
         } else {
             props.navigation.navigate("Game", {
                 loggedInUser: null,
-                highscore: 0,
-                gameMode,
-                time,
-                deckSize,
-                sampleDeckSize,
+                highscore: props.route.params.currentHighscore,
+                setCurrentHighscore: props.route.params.setCurrentHighscore,
+                gameMode: "normal",
+                time: 15,
+                deckSize: 400,
+                sampleDeckSize: 9,
                 mainDeck: props.route.params.mainDeck,
+                getGamesPlayed: props.route.params.getGamesPlayed,
+                increaseGamesPlayed: props.route.params.increaseGamesPlayed,
+                setHighscoresRef: props.route.params.setHighscoresRef,
+                getHighscoresRef: props.route.params.getHighscoresRef,
+                setSpeedScoresRef: props.route.params.setSpeedScoresRef,
+                getSpeedScoresRef: props.route.params.getSpeedScoresRef,
+                setTimeScoresRef: props.route.params.setTimeScoresRef,
+                getTimeScoresRef: props.route.params.getTimeScoresRef,
+                getCurrentHighscoreRank:
+                    props.route.params.getCurrentHighscoreRank,
+                getCurrentSpeedScoreRank:
+                    props.route.params.getCurrentSpeedScoreRank,
+                getCurrentTimeScoreRank:
+                    props.route.params.getCurrentTimeScoreRank,
+                setCurrentHighscoreRank:
+                    props.route.params.setCurrentHighscoreRank,
+                setCurrentSpeedScoreRank:
+                    props.route.params.setCurrentSpeedScoreRank,
+                setCurrentTimeScoreRank:
+                    props.route.params.setCurrentTimeScoreRank,
+                storeData: props.route.params.storeData,
             });
         }
     };
-
-    const handleSpeedGamePress = (gameMode, time, deckSize, sampleDeckSize) => {
-        soundPress();
+    const startSpeedGame = () => {
+        removeListenersForAd();
 
         if (props.route.params.loggedInUser) {
             props.navigation.navigate("Game", {
                 loggedInUser: props.route.params.loggedInUser,
                 highscore: props.route.params.currentSpeedScore,
                 setCurrentHighscore: props.route.params.setCurrentSpeedScore,
-                gameMode,
-                time,
-                deckSize,
-                sampleDeckSize,
+                gameMode: "speed",
+                time: 5,
+                deckSize: 400,
+                sampleDeckSize: 3,
                 mainDeck: props.route.params.mainDeck,
+                getGamesPlayed: props.route.params.getGamesPlayed,
+                increaseGamesPlayed: props.route.params.increaseGamesPlayed,
+                setHighscoresRef: props.route.params.setHighscoresRef,
+                getHighscoresRef: props.route.params.getHighscoresRef,
+                setSpeedScoresRef: props.route.params.setSpeedScoresRef,
+                getSpeedScoresRef: props.route.params.getSpeedScoresRef,
+                setTimeScoresRef: props.route.params.setTimeScoresRef,
+                getTimeScoresRef: props.route.params.getTimeScoresRef,
+                getCurrentHighscoreRank:
+                    props.route.params.getCurrentHighscoreRank,
+                getCurrentSpeedScoreRank:
+                    props.route.params.getCurrentSpeedScoreRank,
+                getCurrentTimeScoreRank:
+                    props.route.params.getCurrentTimeScoreRank,
+                setCurrentHighscoreRank:
+                    props.route.params.setCurrentHighscoreRank,
+                setCurrentSpeedScoreRank:
+                    props.route.params.setCurrentSpeedScoreRank,
+                setCurrentTimeScoreRank:
+                    props.route.params.setCurrentTimeScoreRank,
+                storeData: props.route.params.storeData,
             });
         } else {
+            console.log(props.route.params.currentSpeedScore);
             props.navigation.navigate("Game", {
                 loggedInUser: null,
-                highscore: 0,
-                gameMode,
-                time,
-                deckSize,
-                sampleDeckSize,
+                highscore: props.route.params.currentSpeedScore,
+                setCurrentSpeedScore: props.route.params.setCurrentSpeedScore,
+                gameMode: "speed",
+                time: 5,
+                deckSize: 400,
+                sampleDeckSize: 3,
                 mainDeck: props.route.params.mainDeck,
+                getGamesPlayed: props.route.params.getGamesPlayed,
+                increaseGamesPlayed: props.route.params.increaseGamesPlayed,
+                setHighscoresRef: props.route.params.setHighscoresRef,
+                getHighscoresRef: props.route.params.getHighscoresRef,
+                setSpeedScoresRef: props.route.params.setSpeedScoresRef,
+                getSpeedScoresRef: props.route.params.getSpeedScoresRef,
+                setTimeScoresRef: props.route.params.setTimeScoresRef,
+                getTimeScoresRef: props.route.params.getTimeScoresRef,
+                getCurrentHighscoreRank:
+                    props.route.params.getCurrentHighscoreRank,
+                getCurrentSpeedScoreRank:
+                    props.route.params.getCurrentSpeedScoreRank,
+                getCurrentTimeScoreRank:
+                    props.route.params.getCurrentTimeScoreRank,
+                setCurrentHighscoreRank:
+                    props.route.params.setCurrentHighscoreRank,
+                setCurrentSpeedScoreRank:
+                    props.route.params.setCurrentSpeedScoreRank,
+                setCurrentTimeScoreRank:
+                    props.route.params.setCurrentTimeScoreRank,
+                storeData: props.route.params.storeData,
             });
         }
     };
-
-    const handleTimeGamePress = (deckSize, sampleDeckSize) => {
-        soundPress();
+    const startTimeGame = () => {
+        removeListenersForAd();
 
         if (props.route.params.loggedInUser) {
             props.navigation.navigate("TimeGame", {
                 loggedInUser: props.route.params.loggedInUser,
                 highscore: props.route.params.currentTimeScore,
                 setCurrentHighscore: props.route.params.setCurrentTimeScore,
-                deckSize,
-                sampleDeckSize,
+                deckSize: 50,
+                sampleDeckSize: 9,
                 mainDeck: props.route.params.mainDeck,
+                getGamesPlayed: props.route.params.getGamesPlayed,
+                increaseGamesPlayed: props.route.params.increaseGamesPlayed,
+                setHighscoresRef: props.route.params.setHighscoresRef,
+                getHighscoresRef: props.route.params.getHighscoresRef,
+                setSpeedScoresRef: props.route.params.setSpeedScoresRef,
+                getSpeedScoresRef: props.route.params.getSpeedScoresRef,
+                setTimeScoresRef: props.route.params.setTimeScoresRef,
+                getTimeScoresRef: props.route.params.getTimeScoresRef,
+                getCurrentHighscoreRank:
+                    props.route.params.getCurrentHighscoreRank,
+                getCurrentSpeedScoreRank:
+                    props.route.params.getCurrentSpeedScoreRank,
+                getCurrentTimeScoreRank:
+                    props.route.params.getCurrentTimeScoreRank,
+                setCurrentHighscoreRank:
+                    props.route.params.setCurrentHighscoreRank,
+                setCurrentSpeedScoreRank:
+                    props.route.params.setCurrentSpeedScoreRank,
+                setCurrentTimeScoreRank:
+                    props.route.params.setCurrentTimeScoreRank,
+                storeData: props.route.params.storeData,
             });
         } else {
             props.navigation.navigate("TimeGame", {
                 loggedInUser: null,
-                highscore: 0,
-                deckSize,
-                sampleDeckSize,
+                highscore: props.route.params.currentTimeScore,
+                setCurrentTimeScore: props.route.params.setCurrentTimeScore,
+                deckSize: 50,
+                sampleDeckSize: 9,
                 mainDeck: props.route.params.mainDeck,
+                getGamesPlayed: props.route.params.getGamesPlayed,
+                increaseGamesPlayed: props.route.params.increaseGamesPlayed,
+                storeData: props.route.params.storeData,
             });
         }
     };
+
+    const handleGamePress = () => {
+        soundPress();
+        if (
+            props.route.params.getGamesPlayed() % 5 == 0 &&
+            props.route.params.getGamesPlayed() != 0
+        ) {
+            showVideoAd();
+        } else {
+            if (selectedGameMode.current == "normal") {
+                startNormalGame();
+            } else if (selectedGameMode.current == "speed") {
+                startSpeedGame();
+            } else {
+                startTimeGame();
+            }
+        }
+    };
+
+    // const handleSpeedGamePress = (gameMode, time, deckSize, sampleDeckSize) => {
+    //     soundPress();
+
+    //     if (props.route.params.loggedInUser) {
+    //         props.navigation.navigate("Game", {
+    //             loggedInUser: props.route.params.loggedInUser,
+    //             highscore: props.route.params.currentSpeedScore,
+    //             setCurrentHighscore: props.route.params.setCurrentSpeedScore,
+    //             gameMode,
+    //             time,
+    //             deckSize,
+    //             sampleDeckSize,
+    //             mainDeck: props.route.params.mainDeck,
+    //             gamesPlayed: props.route.params.getGamesPlayed,
+    //             increaseGamesPlayed: props.route.params.increaseGamesPlayed,
+    //         });
+    //     } else {
+    //         props.navigation.navigate("Game", {
+    //             loggedInUser: null,
+    //             highscore: 0,
+    //             gameMode,
+    //             time,
+    //             deckSize,
+    //             sampleDeckSize,
+    //             mainDeck: props.route.params.mainDeck,
+    //             gamesPlayed: props.route.params.getGamesPlayed,
+    //             increaseGamesPlayed: props.route.params.increaseGamesPlayed,
+    //         });
+    //     }
+    // };
+
+    // const handleTimeGamePress = (deckSize, sampleDeckSize) => {
+    //     soundPress();
+
+    //     if (props.route.params.loggedInUser) {
+    //         props.navigation.navigate("TimeGame", {
+    //             loggedInUser: props.route.params.loggedInUser,
+    //             highscore: props.route.params.currentTimeScore,
+    //             setCurrentHighscore: props.route.params.setCurrentTimeScore,
+    //             deckSize,
+    //             sampleDeckSize,
+    //             mainDeck: props.route.params.mainDeck,
+    //             gamesPlayed: props.route.params.getGamesPlayed,
+    //             increaseGamesPlayed: props.route.params.increaseGamesPlayed,
+    //         });
+    //     } else {
+    //         props.navigation.navigate("TimeGame", {
+    //             loggedInUser: null,
+    //             highscore: 0,
+    //             deckSize,
+    //             sampleDeckSize,
+    //             mainDeck: props.route.params.mainDeck,
+    //             gamesPlayed: props.route.params.getGamesPlayed,
+    //             increaseGamesPlayed: props.route.params.increaseGamesPlayed,
+    //         });
+    //     }
+    // };
 
     return (
         <View style={styles.container}>
@@ -138,17 +359,26 @@ export default function GameModes(props) {
             <View style={styles.buttonsContainer}>
                 <FlatButtonBig
                     title="Normal"
-                    onPress={() => handleNormalGamePress("normal", 15, 100, 9)}
+                    onPress={() => {
+                        selectedGameMode.current = "normal";
+                        handleGamePress();
+                    }}
                     color={"#f01d71"}
                 />
                 <FlatButtonBig
                     title="Speed Round"
-                    onPress={() => handleSpeedGamePress("speed", 5, 100, 3)}
+                    onPress={() => {
+                        selectedGameMode.current = "speed";
+                        handleGamePress();
+                    }}
                     color={"#1E72F1"}
                 />
                 <FlatButtonBig
                     title="Timed 50"
-                    onPress={() => handleTimeGamePress(50, 9)}
+                    onPress={() => {
+                        selectedGameMode.current = "time";
+                        handleGamePress();
+                    }}
                     color={"#E31EF1"}
                 />
             </View>

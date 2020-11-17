@@ -14,24 +14,18 @@ import firebase from "../firebase/config";
 import { AppLoading } from "expo";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import {
-    AdMobBanner,
-    AdMobInterstitial,
-    PublisherBanner,
-    AdMobRewarded,
-    setTestDeviceIDAsync,
-} from "expo-ads-admob";
+import { AdMobInterstitial } from "expo-ads-admob";
 
 export default function LeaderBoard(props) {
-    const highscoreRef = useRef();
-    const speedScoreRef = useRef();
-    const timeScoreRef = useRef();
+    // const highscoresRef = useRef();
+    // const speedScoresRef = useRef();
+    // const timeScoresRef = useRef();
     const [highscores, setHighscores] = useState();
-    const [currentHighscoreRank, setCurrentHighscoreRank] = useState();
+    // const [currentHighscoreRank, setCurrentHighscoreRank] = useState();
     const [currentHighscore, setCurrentHighscore] = useState();
-    const [currentSpeedScoreRank, setCurrentSpeedScoreRank] = useState();
+    // const [currentSpeedScoreRank, setCurrentSpeedScoreRank] = useState();
     const [currentSpeedScore, setCurrentSpeedScore] = useState();
-    const [currentTimeScoreRank, setCurrentTimeScoreRank] = useState();
+    // const [currentTimeScoreRank, setCurrentTimeScoreRank] = useState();
     const [currentTimeScore, setCurrentTimeScore] = useState();
     const handleBackToMenuPress = () => {
         props.navigation.navigate("Home");
@@ -71,11 +65,22 @@ export default function LeaderBoard(props) {
         }).start();
     };
 
-    // console.log(props.route.params.loggedInUser.id);
-
     const firebaseQuery = async () => {
+        console.log("inside fire query ===============================");
+        let highscoresSnapShot = {};
+        let speedScoresSnapShot = {};
+        let timeScoresSnapShot = {};
+
+        let prevScore = 999999999;
+        let pos = 1;
+        let tiedIndex = 1;
+
+        let highscoreData = [];
+        let speedScoreData = [];
+        let timeScoreData = [];
+
         if (props.route.params.loggedInUser) {
-            const userQuery = await firebase
+            await firebase
                 .firestore()
                 .collection("users")
                 .doc(props.route.params.loggedInUser.id)
@@ -91,157 +96,164 @@ export default function LeaderBoard(props) {
                     }
                 });
         }
+        console.log("after user loggin~~~~~~~~~~~~~~~");
 
-        const highscoreSnapShot = await firebase
-            .firestore()
-            .collection("users")
-            .where("highscore", ">", 0)
-            .orderBy("highscore", "desc")
-            .limit(10)
-            .get();
+        if (props.route.params.getHighscoresRef() == "empty") {
+            console.log(
+                "making highscore query ==============================="
+            );
 
-        const speedScoreSnapShot = await firebase
-            .firestore()
-            .collection("users")
-            .where("speedScore", ">", 0)
-            .orderBy("speedScore", "desc")
-            .limit(10)
-            .get();
+            highscoresSnapShot = await firebase
+                .firestore()
+                .collection("users")
+                .where("highscore", ">", 0)
+                .orderBy("highscore", "desc")
+                .limit(10)
+                .get();
 
-        const timeScoreSnapShot = await firebase
-            .firestore()
-            .collection("users")
-            .where("timeScore", ">", 0)
-            .orderBy("timeScore")
-            .limit(10)
-            .get();
+            highscoreData = await highscoresSnapShot.docs.map((doc, i) => {
+                const highscore = doc.data().highscore;
+                let rank = 0;
 
-        let prevScore = 999999999;
-        let pos = 1;
-        let tiedIndex = 1;
-
-        const highscoreData = await highscoreSnapShot.docs.map((doc, i) => {
-            const highscore = doc.data().highscore;
-            let rank = 0;
-
-            if (highscore < prevScore) {
-                rank = pos;
-                tiedIndex = rank;
-                pos++;
-            } else {
-                rank = tiedIndex;
-                if (pos == 1) pos = 2;
-            }
-            prevScore = highscore;
-
-            if (props.route.params.loggedInUser) {
-                if (props.route.params.loggedInUser.id == doc.data().id) {
-                    setCurrentHighscoreRank(rank);
+                if (highscore < prevScore) {
+                    rank = pos;
+                    tiedIndex = rank;
+                    pos++;
+                } else {
+                    rank = tiedIndex;
+                    if (pos == 1) pos = 2;
                 }
-            }
-            return {
-                pos: rank,
-                username: doc.data().username,
-                highscore: highscore,
-            };
-        });
+                prevScore = highscore;
 
-        prevScore = 999999999;
-        pos = 1;
-        tiedIndex = 1;
-
-        const speedScoreData = await speedScoreSnapShot.docs.map((doc) => {
-            const highscore = doc.data().speedScore;
-            let rank = 0;
-            console.log(highscore, prevScore);
-            if (highscore < prevScore) {
-                rank = pos;
-                tiedIndex = rank;
-                pos++;
-            } else {
-                rank = tiedIndex;
-                if (pos == 1) pos = 2;
-            }
-            prevScore = highscore;
-
-            if (props.route.params.loggedInUser) {
-                if (props.route.params.loggedInUser.id == doc.data().id) {
-                    setCurrentSpeedScoreRank(rank);
+                if (props.route.params.loggedInUser) {
+                    if (props.route.params.loggedInUser.id == doc.data().id) {
+                        props.route.params.setCurrentHighscoreRank(rank);
+                    }
                 }
-            }
-            return {
-                pos: rank,
-                username: doc.data().username,
-                highscore: doc.data().speedScore,
-            };
-        });
+                return {
+                    pos: rank,
+                    username: doc.data().username,
+                    highscore: highscore,
+                };
+            });
 
-        prevScore = 0;
-        pos = 1;
-        tiedIndex = 1;
+            props.route.params.setHighscoresRef(highscoreData);
+        }
 
-        const timeScoreData = await timeScoreSnapShot.docs.map((doc) => {
-            const highscore = doc.data().timeScore;
-            let rank = 0;
-            console.log(highscore, prevScore);
-            if (highscore > prevScore) {
-                rank = pos;
-                tiedIndex = rank;
-                pos++;
-            } else {
-                rank = tiedIndex;
-                if (pos == 1) pos = 2;
-            }
-            prevScore = highscore;
+        if (props.route.params.getSpeedScoresRef() == "empty") {
+            console.log(
+                "making speedscore query ==============================="
+            );
+            speedScoresSnapShot = await firebase
+                .firestore()
+                .collection("users")
+                .where("speedScore", ">", 0)
+                .orderBy("speedScore", "desc")
+                .limit(10)
+                .get();
 
-            if (props.route.params.loggedInUser) {
-                if (props.route.params.loggedInUser.id == doc.data().id) {
-                    setCurrentTimeScoreRank(rank);
+            prevScore = 999999999;
+            pos = 1;
+            tiedIndex = 1;
+
+            speedScoreData = await speedScoresSnapShot.docs.map((doc) => {
+                const highscore = doc.data().speedScore;
+                let rank = 0;
+                if (highscore < prevScore) {
+                    rank = pos;
+                    tiedIndex = rank;
+                    pos++;
+                } else {
+                    rank = tiedIndex;
+                    if (pos == 1) pos = 2;
                 }
-            }
-            return {
-                pos: rank,
-                username: doc.data().username,
-                highscore: doc.data().timeScore,
-            };
-        });
+                prevScore = highscore;
 
-        highscoreRef.current = highscoreData;
-        speedScoreRef.current = speedScoreData;
-        timeScoreRef.current = timeScoreData;
-        setHighscores(highscoreData);
+                if (props.route.params.loggedInUser) {
+                    if (props.route.params.loggedInUser.id == doc.data().id) {
+                        props.route.params.setCurrentSpeedScoreRank(rank);
+                    }
+                }
+                return {
+                    pos: rank,
+                    username: doc.data().username,
+                    highscore: doc.data().speedScore,
+                };
+            });
+
+            props.route.params.setSpeedScoresRef(speedScoreData);
+        }
+
+        if (props.route.params.getTimeScoresRef() == "empty") {
+            console.log(
+                "making timescore query ==============================="
+            );
+            timeScoresSnapShot = await firebase
+                .firestore()
+                .collection("users")
+                .where("timeScore", ">", 0)
+                .orderBy("timeScore")
+                .limit(10)
+                .get();
+
+            prevScore = 0;
+            pos = 1;
+            tiedIndex = 1;
+
+            timeScoreData = await timeScoresSnapShot.docs.map((doc) => {
+                const highscore = doc.data().timeScore;
+                let rank = 0;
+                if (highscore > prevScore) {
+                    rank = pos;
+                    tiedIndex = rank;
+                    pos++;
+                } else {
+                    rank = tiedIndex;
+                    if (pos == 1) pos = 2;
+                }
+                prevScore = highscore;
+
+                if (props.route.params.loggedInUser) {
+                    if (props.route.params.loggedInUser.id == doc.data().id) {
+                        props.route.params.setCurrentTimeScoreRank(rank);
+                    }
+                }
+                return {
+                    pos: rank,
+                    username: doc.data().username,
+                    highscore: doc.data().timeScore,
+                };
+            });
+            props.route.params.setTimeScoresRef(timeScoreData);
+        }
+
+        // highscoresRef.current = highscoreData;
+        // speedScoresRef.current = speedScoreData;
+        // timeScoresRef.current = timeScoreData;
+        console.log("end of query");
+        setHighscores(props.route.params.getHighscoresRef());
     };
 
     useLayoutEffect(() => {
+        AdMobInterstitial.addEventListener("interstitialDidLoad", () =>
+            console.log("videoloaded")
+        );
+        AdMobInterstitial.addEventListener("interstitialDidFailToLoad", () =>
+            console.log("failedtoload")
+        );
+        AdMobInterstitial.addEventListener("interstitialDidOpen", () =>
+            console.log("opened")
+        );
+        AdMobInterstitial.addEventListener(
+            "interstitialWillLeaveApplication",
+            () => console.log("leaveapp")
+        );
+        AdMobInterstitial.addEventListener("interstitialDidClose", () =>
+            console.log("close")
+        );
+        AdMobInterstitial.removeAllListeners();
         showVideoAd();
         firebaseQuery();
-        // console.log(props.route.params.loggedInUser);
-        // firebase
-        //     .firestore()
-        //     .collection("users")
-        //     .orderBy("highscore", "desc")
-        //     .limit(500)
-        //     .get()
-        //     .then(function (querySnapshot) {
-        //         const highscoresFromQuery = [];
-        //         let i = 1;
-        //         querySnapshot.forEach(function (doc) {
-        //             // doc.data() is never undefined for query doc snapshots
-        //             console.log(doc.data().email, " => ", doc.data().highscore);
-        //             highscoresFromQuery.push({
-        //                 pos: i,
-        //                 email: doc.data().email,
-        //                 highscore: doc.data().highscore,
-        //             });
-
-        //             if (props.route.params.loggedInUser.id == doc.data().id) {
-        //                 console.log("you are at position", i);
-        //                 setCurrentHighscoreRank(i);
-        //             }
-        //             i++;
-        //         });
-        //         setHighscores(highscoresFromQuery);
-        //     });
     }, []);
 
     const fancyTimeFormat = (duration) => {
@@ -302,7 +314,9 @@ export default function LeaderBoard(props) {
                             moveToggle(2, 2);
                             selectedButton.current = "normal";
                             toggleWidth();
-                            setHighscores(highscoreRef.current);
+                            setHighscores(
+                                props.route.params.getHighscoresRef()
+                            );
                         }}
                     >
                         <Text style={styles.toggleText}>Normal</Text>
@@ -313,7 +327,9 @@ export default function LeaderBoard(props) {
                             moveToggle(87, 2);
                             selectedButton.current = "speed";
                             toggleWidth();
-                            setHighscores(speedScoreRef.current);
+                            setHighscores(
+                                props.route.params.getSpeedScoresRef()
+                            );
                         }}
                     >
                         <Text style={styles.toggleText}>Speed</Text>
@@ -324,7 +340,9 @@ export default function LeaderBoard(props) {
                             moveToggle(173, 2);
                             selectedButton.current = "time";
                             toggleWidth();
-                            setHighscores(timeScoreRef.current);
+                            setHighscores(
+                                props.route.params.getTimeScoresRef()
+                            );
                         }}
                     >
                         <Text style={styles.toggleText}>Time</Text>
@@ -375,52 +393,64 @@ export default function LeaderBoard(props) {
                                     {selectedButton.current == "normal"
                                         ? currentHighscore == 0
                                             ? "NA"
-                                            : currentHighscoreRank
-                                            ? currentHighscoreRank
+                                            : props.route.params.getCurrentHighscoreRank()
+                                            ? props.route.params.getCurrentHighscoreRank()
                                             : Math.ceil(
                                                   ((highscores[0].highscore -
                                                       highscores[
                                                           highscores.length - 1
                                                       ].highscore) /
-                                                      highscores.length) *
+                                                      highscores[
+                                                          highscores.length - 1
+                                                      ].pos) *
                                                       (highscores[
                                                           highscores.length - 1
                                                       ].highscore -
                                                           currentHighscore) +
-                                                      highscores.length
+                                                      highscores[
+                                                          highscores.length - 1
+                                                      ].pos
                                               )
                                         : selectedButton.current == "speed"
                                         ? currentSpeedScore == 0
                                             ? "NA"
-                                            : currentSpeedScoreRank
-                                            ? currentSpeedScoreRank
+                                            : props.route.params.getCurrentSpeedScoreRank()
+                                            ? props.route.params.getCurrentSpeedScoreRank()
                                             : Math.ceil(
                                                   ((highscores[0].highscore -
                                                       highscores[
                                                           highscores.length - 1
                                                       ].highscore) /
-                                                      highscores.length) *
+                                                      highscores[
+                                                          highscores.length - 1
+                                                      ].pos) *
                                                       (highscores[
                                                           highscores.length - 1
                                                       ].highscore -
-                                                          currentHighscore) +
-                                                      highscores.length
+                                                          currentSpeedScore) +
+                                                      highscores[
+                                                          highscores.length - 1
+                                                      ].pos
                                               )
                                         : currentTimeScore == 0
                                         ? "NA"
-                                        : currentTimeScoreRank
-                                        ? currentTimeScoreRank
+                                        : props.route.params.getCurrentTimeScoreRank()
+                                        ? props.route.params.getCurrentTimeScoreRank()
                                         : Math.ceil(
                                               ((highscores[
                                                   highscores.length - 1
                                               ].highscore -
                                                   highscores[0].highscore) /
-                                                  highscores.length) *
-                                                  currentHighscore -
+                                                  highscores[
+                                                      highscores.length - 1
+                                                  ].pos) *
+                                                  currentTimeScore -
                                                   highscores[
                                                       highscores.length - 1
                                                   ].highscore +
-                                                  highscores.length
+                                                  highscores[
+                                                      highscores.length - 1
+                                                  ].pos
                                           )}
                                     .
                                 </Text>

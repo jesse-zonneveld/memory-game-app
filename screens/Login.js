@@ -1,6 +1,12 @@
 import React from "react";
 import firebase from "../firebase/config";
-import { StyleSheet, Text, View, TextInput } from "react-native";
+import {
+    StyleSheet,
+    Text,
+    View,
+    TextInput,
+    TouchableOpacity,
+} from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Formik } from "formik";
 import * as yup from "yup";
@@ -8,7 +14,7 @@ import FlatButton from "../shared/flatButton";
 
 const reviewSchema = yup.object({
     email: yup.string().email().required(),
-    password: yup.string().required().min(8),
+    password: yup.string().required(),
 });
 
 export default function LoginForm(props) {
@@ -89,6 +95,14 @@ export default function LoginForm(props) {
                     </View>
                 )}
             </Formik>
+            <View style={styles.loginContainer}>
+                <Text style={styles.loginSentence}>
+                    Don't have an account?{" "}
+                    <TouchableOpacity onPress={props.switchModal}>
+                        <Text style={styles.loginText}>Register</Text>
+                    </TouchableOpacity>
+                </Text>
+            </View>
         </View>
     );
 }
@@ -118,5 +132,19 @@ const styles = StyleSheet.create({
         color: "red",
         fontWeight: "bold",
         marginBottom: 10,
+    },
+    loginSentence: {
+        fontFamily: "nunito-light",
+        fontSize: 16,
+        marginLeft: 30,
+    },
+    loginContainer: {
+        justifyContent: "center",
+    },
+    loginText: {
+        fontFamily: "nunito-bold",
+        fontSize: 16,
+        color: "black",
+        transform: [{ translateY: 3 }],
     },
 });
