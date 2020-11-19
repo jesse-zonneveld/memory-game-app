@@ -358,7 +358,7 @@ export default function Game(props) {
         }
     };
 
-    const updateHighscoreLoggedIn = () => {
+    const updateHighscoreLoggedIn = async () => {
         if (score > bestScore) {
             setBestScore(score);
             props.route.params.setCurrentHighscore(score);
@@ -372,6 +372,56 @@ export default function Game(props) {
                         ].highscore < score
                     ) {
                         props.route.params.setHighscoresRef("empty");
+                    }
+                }
+                console.log("beofe");
+                let normalScoresFB = [];
+                await firebase
+                    .firestore()
+                    .collection("highscores")
+                    .doc("normal")
+                    .get()
+                    .then(function (doc) {
+                        if (doc.exists) {
+                            normalScoresFB = Object.entries(doc.data());
+                        } else {
+                            // doc.data() will be undefined in this case
+                            console.log("No such document!");
+                        }
+                    })
+                    .catch(function (error) {
+                        console.log("Error getting document:", error);
+                    });
+                console.log("after");
+                console.log(normalScoresFB);
+
+                if (normalScoresFB.length < 5) {
+                    await firebase
+                        .firestore()
+                        .collection("highscores")
+                        .doc("normal")
+                        .update({
+                            [props.route.params.loggedInUser.username]: score,
+                        });
+                } else {
+                    const lowestUsernameAndScore = normalScoresFB.sort(
+                        (a, b) => a[1] - b[1]
+                    )[0];
+                    console.log(
+                        lowestUsernameAndScore[0],
+                        lowestUsernameAndScore[1],
+                        score
+                    );
+                    if (score > lowestUsernameAndScore[1]) {
+                        await firebase
+                            .firestore()
+                            .collection("highscores")
+                            .doc("normal")
+                            .update({
+                                [lowestUsernameAndScore[0]]: firebase.firestore.FieldValue.delete(),
+                                [props.route.params.loggedInUser
+                                    .username]: score,
+                            });
                     }
                 }
                 return firebase
@@ -399,6 +449,56 @@ export default function Game(props) {
                         props.route.params.setSpeedScoresRef("empty");
                     }
                 }
+
+                let normalScoresFB = [];
+                await firebase
+                    .firestore()
+                    .collection("highscores")
+                    .doc("speed")
+                    .get()
+                    .then(function (doc) {
+                        if (doc.exists) {
+                            normalScoresFB = Object.entries(doc.data());
+                        } else {
+                            // doc.data() will be undefined in this case
+                            console.log("No such document!");
+                        }
+                    })
+                    .catch(function (error) {
+                        console.log("Error getting document:", error);
+                    });
+                console.log("after");
+                console.log(normalScoresFB);
+
+                if (normalScoresFB.length < 5) {
+                    await firebase
+                        .firestore()
+                        .collection("highscores")
+                        .doc("speed")
+                        .update({
+                            [props.route.params.loggedInUser.username]: score,
+                        });
+                } else {
+                    const lowestUsernameAndScore = normalScoresFB.sort(
+                        (a, b) => a[1] - b[1]
+                    )[0];
+                    console.log(
+                        lowestUsernameAndScore[0],
+                        lowestUsernameAndScore[1],
+                        score
+                    );
+                    if (score > lowestUsernameAndScore[1]) {
+                        await firebase
+                            .firestore()
+                            .collection("highscores")
+                            .doc("speed")
+                            .update({
+                                [lowestUsernameAndScore[0]]: firebase.firestore.FieldValue.delete(),
+                                [props.route.params.loggedInUser
+                                    .username]: score,
+                            });
+                    }
+                }
                 return firebase
                     .firestore()
                     .collection("users")
@@ -419,23 +519,57 @@ export default function Game(props) {
     const handleLeaderBoardPress = () => {
         soundPress();
 
-        props.navigation.navigate("LeaderBoard", {
-            loggedInUser: props.route.params.loggedInUser,
-            getHighscoresRef: props.route.params.getHighscoresRef,
-            getSpeedScoresRef: props.route.params.getSpeedScoresRef,
-            getTimeScoresRef: props.route.params.getTimeScoresRef,
-            setHighscoresRef: props.route.params.setHighscoresRef,
-            setSpeedScoresRef: props.route.params.setSpeedScoresRef,
-            setTimeScoresRef: props.route.params.setTimeScoresRef,
-            getCurrentHighscoreRank: props.route.params.getCurrentHighscoreRank,
-            getCurrentSpeedScoreRank:
-                props.route.params.getCurrentSpeedScoreRank,
-            getCurrentTimeScoreRank: props.route.params.getCurrentTimeScoreRank,
-            setCurrentHighscoreRank: props.route.params.setCurrentHighscoreRank,
-            setCurrentSpeedScoreRank:
-                props.route.params.setCurrentSpeedScoreRank,
-            setCurrentTimeScoreRank: props.route.params.setCurrentTimeScoreRank,
-        });
+        if (props.route.params.gameMode == "normal") {
+            props.navigation.navigate("LeaderBoard", {
+                loggedInUser: props.route.params.loggedInUser,
+                getHighscoresRef: props.route.params.getHighscoresRef,
+                getSpeedScoresRef: props.route.params.getSpeedScoresRef,
+                getTimeScoresRef: props.route.params.getTimeScoresRef,
+                setHighscoresRef: props.route.params.setHighscoresRef,
+                setSpeedScoresRef: props.route.params.setSpeedScoresRef,
+                setTimeScoresRef: props.route.params.setTimeScoresRef,
+                getCurrentHighscoreRank:
+                    props.route.params.getCurrentHighscoreRank,
+                getCurrentSpeedScoreRank:
+                    props.route.params.getCurrentSpeedScoreRank,
+                getCurrentTimeScoreRank:
+                    props.route.params.getCurrentTimeScoreRank,
+                setCurrentHighscoreRank:
+                    props.route.params.setCurrentHighscoreRank,
+                setCurrentSpeedScoreRank:
+                    props.route.params.setCurrentSpeedScoreRank,
+                setCurrentTimeScoreRank:
+                    props.route.params.setCurrentTimeScoreRank,
+                getCurrentHighscore: bestScore,
+                getCurrentSpeedScore: props.route.params.getCurrentSpeedScore,
+                getCurrentTimeScore: props.route.params.getCurrentTimeScore,
+            });
+        } else if (props.route.params.gameMode == "speed") {
+            props.navigation.navigate("LeaderBoard", {
+                loggedInUser: props.route.params.loggedInUser,
+                getHighscoresRef: props.route.params.getHighscoresRef,
+                getSpeedScoresRef: props.route.params.getSpeedScoresRef,
+                getTimeScoresRef: props.route.params.getTimeScoresRef,
+                setHighscoresRef: props.route.params.setHighscoresRef,
+                setSpeedScoresRef: props.route.params.setSpeedScoresRef,
+                setTimeScoresRef: props.route.params.setTimeScoresRef,
+                getCurrentHighscoreRank:
+                    props.route.params.getCurrentHighscoreRank,
+                getCurrentSpeedScoreRank:
+                    props.route.params.getCurrentSpeedScoreRank,
+                getCurrentTimeScoreRank:
+                    props.route.params.getCurrentTimeScoreRank,
+                setCurrentHighscoreRank:
+                    props.route.params.setCurrentHighscoreRank,
+                setCurrentSpeedScoreRank:
+                    props.route.params.setCurrentSpeedScoreRank,
+                setCurrentTimeScoreRank:
+                    props.route.params.setCurrentTimeScoreRank,
+                getCurrentHighscore: props.route.params.getCurrentHighscore,
+                getCurrentSpeedScore: bestScore,
+                getCurrentTimeScore: props.route.params.getCurrentTimeScore,
+            });
+        }
     };
 
     return (
@@ -626,7 +760,7 @@ const styles = StyleSheet.create({
         // resizeMode: "cover",
         height: "104%",
         top: 0,
-        zIndex: 5,
+        zIndex: -10,
         width: "100%",
         flex: 1,
     },
@@ -704,5 +838,6 @@ const styles = StyleSheet.create({
     buttonsContainer: {
         justifyContent: "center",
         alignItems: "center",
+        zIndex: 10,
     },
 });

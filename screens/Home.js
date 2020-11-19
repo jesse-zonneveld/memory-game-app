@@ -36,6 +36,7 @@ export default function Home(props) {
 
     useLayoutEffect(() => {
         if (loggedInUser) {
+            console.log("inside logged in user");
             setCurrentHighscore(loggedInUser.highscore);
             setCurrentSpeedScore(loggedInUser.speedScore);
             setCurrentTimeScore(loggedInUser.timeScore);
@@ -46,11 +47,12 @@ export default function Home(props) {
             // storeData("speedScore", loggedInUser.speedScore.toString());
             // storeData("timeScore", loggedInUser.timeScore.toString());
         } else {
+            console.log("inside no user");
+
             retrieveData("highscore");
             retrieveData("speedScore");
             retrieveData("timeScore");
             setTimeout(() => setModalStatus("reg"), 2000);
-            console.log(currentHighscore, currentSpeedScore);
         }
     }, [loggedInUser]);
 
@@ -68,10 +70,9 @@ export default function Home(props) {
         try {
             value = await AsyncStorage.getItem(key);
             if (value !== null) {
-                console.log(loggedInUser);
                 if (loggedInUser) {
                     if (key == "highscore") {
-                        console.log("highscore", value);
+                        console.log("highscore User", value);
                         if (+value > loggedInUser.highscore) {
                             setCurrentHighscore(+value);
                             return firebase
@@ -95,7 +96,7 @@ export default function Home(props) {
                                 });
                         }
                     } else if (key == "speedScore") {
-                        console.log("speedScore", value);
+                        console.log("speedScore User", value);
                         if (+value > loggedInUser.speedScore) {
                             setCurrentSpeedScore(+value);
 
@@ -120,7 +121,7 @@ export default function Home(props) {
                                 });
                         }
                     } else if (key == "timeScore") {
-                        console.log("timeScore", value);
+                        console.log("timeScore User", value);
                         if (+value > loggedInUser.timeScore) {
                             setCurrentTimeScore(+value);
 
@@ -147,13 +148,13 @@ export default function Home(props) {
                     }
                 } else {
                     if (key == "highscore") {
-                        console.log("highscore", value);
+                        console.log("highscore no user", value);
                         setCurrentHighscore(+value);
                     } else if (key == "speedScore") {
-                        console.log("speedScore", +value);
+                        console.log("speedScore no user", +value);
                         setCurrentSpeedScore(+value);
                     } else if (key == "timeScore") {
-                        console.log("timeScore", value);
+                        console.log("timeScore no user", value);
                         setCurrentTimeScore(+value);
                     }
                 }
@@ -193,6 +194,9 @@ export default function Home(props) {
 
         props.navigation.navigate("LeaderBoard", {
             loggedInUser: loggedInUser,
+            getCurrentHighscore: currentHighscore,
+            getCurrentSpeedScore: currentSpeedScore,
+            getCurrentTimeScore: currentTimeScore,
             getHighscoresRef: getHighscoresRef,
             getSpeedScoresRef: getSpeedScoresRef,
             getTimeScoresRef: getTimeScoresRef,
@@ -261,6 +265,9 @@ export default function Home(props) {
             .then(() => {
                 console.log("user logged out:");
             });
+        storeData("highscore", "0");
+        storeData("speedScore", "0");
+        storeData("timeScore", "0");
         setLoggedInUser(null);
         setCurrentHighscore(0);
         setCurrentSpeedScore(0);
@@ -326,7 +333,6 @@ export default function Home(props) {
                 storeData: storeData,
             });
         } else {
-            console.log(currentHighscore, currentSpeedScore);
             props.navigation.navigate("GameModes", {
                 loggedInUser: null,
                 currentHighscore: currentHighscore,

@@ -304,7 +304,7 @@ export default function TimeGame(props) {
         }
     };
 
-    const updateHighscoreLoggedIn = () => {
+    const updateHighscoreLoggedIn = async () => {
         if (bestScore == 0 || score < bestScore) {
             setBestScore(score);
             props.route.params.setCurrentHighscore(score);
@@ -315,6 +315,56 @@ export default function TimeGame(props) {
                     ].highscore > score
                 ) {
                     props.route.params.setTimeScoresRef("empty");
+                }
+            }
+
+            console.log("beofe");
+            let timeScoresFB = [];
+            await firebase
+                .firestore()
+                .collection("highscores")
+                .doc("time")
+                .get()
+                .then(function (doc) {
+                    if (doc.exists) {
+                        timeScoresFB = Object.entries(doc.data());
+                    } else {
+                        // doc.data() will be undefined in this case
+                        console.log("No such document!");
+                    }
+                })
+                .catch(function (error) {
+                    console.log("Error getting document:", error);
+                });
+            console.log("after");
+            console.log(timeScoresFB);
+
+            if (timeScoresFB.length < 5) {
+                await firebase
+                    .firestore()
+                    .collection("highscores")
+                    .doc("time")
+                    .update({
+                        [props.route.params.loggedInUser.username]: score,
+                    });
+            } else {
+                const lowestUsernameAndScore = timeScoresFB.sort(
+                    (a, b) => b[1] - a[1]
+                )[0];
+                console.log(
+                    lowestUsernameAndScore[0],
+                    lowestUsernameAndScore[1],
+                    score
+                );
+                if (score < lowestUsernameAndScore[1]) {
+                    await firebase
+                        .firestore()
+                        .collection("highscores")
+                        .doc("time")
+                        .update({
+                            [lowestUsernameAndScore[0]]: firebase.firestore.FieldValue.delete(),
+                            [props.route.params.loggedInUser.username]: score,
+                        });
                 }
             }
 
@@ -353,6 +403,9 @@ export default function TimeGame(props) {
             setCurrentSpeedScoreRank:
                 props.route.params.setCurrentSpeedScoreRank,
             setCurrentTimeScoreRank: props.route.params.setCurrentTimeScoreRank,
+            getCurrentHighscore: props.route.params.getCurrentHighscore,
+            getCurrentSpeedScore: props.route.params.getCurrentSpeedScore,
+            getCurrentTimeScore: bestScore,
         });
     };
 
@@ -533,7 +586,7 @@ const styles = StyleSheet.create({
         // resizeMode: "cover",
         height: "104%",
         top: 0,
-        zIndex: 5,
+        zIndex: -10,
         width: "100%",
         flex: 1,
     },

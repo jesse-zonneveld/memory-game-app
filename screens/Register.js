@@ -20,7 +20,7 @@ const reviewSchema = yup.object({
     username: yup
         .string()
         .required()
-        .min(5)
+        .min(3)
         .max(15)
         .test("unique_username", "Username already taken.", async (val) => {
             console.log(cachedSnapshot == "empty");
@@ -35,7 +35,7 @@ const reviewSchema = yup.object({
             const usernamesObject = cachedSnapshot.docs.map((doc) =>
                 doc.data()
             );
-            const usernamesArray = Object.values(usernamesObject[0]);
+            const usernamesArray = Object.keys(usernamesObject[0]);
 
             return !usernamesArray.includes(val);
         }),
@@ -68,7 +68,7 @@ export default function RegisterForm(props) {
                             .collection("usernames")
                             .doc("usernamesDoc")
                             .update({
-                                [uid.current]: values.username,
+                                [values.username]: "",
                             })
                             .then(function () {
                                 console.log("Document successfully updated!");

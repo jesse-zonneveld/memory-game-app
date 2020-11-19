@@ -107,6 +107,9 @@ export default function GameModes(props) {
                 setCurrentTimeScoreRank:
                     props.route.params.setCurrentTimeScoreRank,
                 storeData: props.route.params.storeData,
+                getCurrentHighscore: props.route.params.currentHighscore,
+                getCurrentSpeedScore: props.route.params.currentSpeedScore,
+                getCurrentTimeScore: props.route.params.currentTimeScore,
             });
         } else {
             props.navigation.navigate("Game", {
@@ -139,6 +142,9 @@ export default function GameModes(props) {
                 setCurrentTimeScoreRank:
                     props.route.params.setCurrentTimeScoreRank,
                 storeData: props.route.params.storeData,
+                getCurrentHighscore: props.route.params.currentHighscore,
+                getCurrentSpeedScore: props.route.params.currentSpeedScore,
+                getCurrentTimeScore: props.route.params.currentTimeScore,
             });
         }
     };
@@ -176,9 +182,11 @@ export default function GameModes(props) {
                 setCurrentTimeScoreRank:
                     props.route.params.setCurrentTimeScoreRank,
                 storeData: props.route.params.storeData,
+                getCurrentHighscore: props.route.params.currentHighscore,
+                getCurrentSpeedScore: props.route.params.currentSpeedScore,
+                getCurrentTimeScore: props.route.params.currentTimeScore,
             });
         } else {
-            console.log(props.route.params.currentSpeedScore);
             props.navigation.navigate("Game", {
                 loggedInUser: null,
                 highscore: props.route.params.currentSpeedScore,
@@ -209,6 +217,9 @@ export default function GameModes(props) {
                 setCurrentTimeScoreRank:
                     props.route.params.setCurrentTimeScoreRank,
                 storeData: props.route.params.storeData,
+                getCurrentHighscore: props.route.params.currentHighscore,
+                getCurrentSpeedScore: props.route.params.currentSpeedScore,
+                getCurrentTimeScore: props.route.params.currentTimeScore,
             });
         }
     };
@@ -244,6 +255,9 @@ export default function GameModes(props) {
                 setCurrentTimeScoreRank:
                     props.route.params.setCurrentTimeScoreRank,
                 storeData: props.route.params.storeData,
+                getCurrentHighscore: props.route.params.currentHighscore,
+                getCurrentSpeedScore: props.route.params.currentSpeedScore,
+                getCurrentTimeScore: props.route.params.currentTimeScore,
             });
         } else {
             props.navigation.navigate("TimeGame", {
@@ -255,7 +269,28 @@ export default function GameModes(props) {
                 mainDeck: props.route.params.mainDeck,
                 getGamesPlayed: props.route.params.getGamesPlayed,
                 increaseGamesPlayed: props.route.params.increaseGamesPlayed,
+                setHighscoresRef: props.route.params.setHighscoresRef,
+                getHighscoresRef: props.route.params.getHighscoresRef,
+                setSpeedScoresRef: props.route.params.setSpeedScoresRef,
+                getSpeedScoresRef: props.route.params.getSpeedScoresRef,
+                setTimeScoresRef: props.route.params.setTimeScoresRef,
+                getTimeScoresRef: props.route.params.getTimeScoresRef,
+                getCurrentHighscoreRank:
+                    props.route.params.getCurrentHighscoreRank,
+                getCurrentSpeedScoreRank:
+                    props.route.params.getCurrentSpeedScoreRank,
+                getCurrentTimeScoreRank:
+                    props.route.params.getCurrentTimeScoreRank,
+                setCurrentHighscoreRank:
+                    props.route.params.setCurrentHighscoreRank,
+                setCurrentSpeedScoreRank:
+                    props.route.params.setCurrentSpeedScoreRank,
+                setCurrentTimeScoreRank:
+                    props.route.params.setCurrentTimeScoreRank,
                 storeData: props.route.params.storeData,
+                getCurrentHighscore: props.route.params.currentHighscore,
+                getCurrentSpeedScore: props.route.params.currentSpeedScore,
+                getCurrentTimeScore: props.route.params.currentTimeScore,
             });
         }
     };

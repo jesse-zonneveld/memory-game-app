@@ -67,34 +67,53 @@ export default function LeaderBoard(props) {
 
     const firebaseQuery = async () => {
         console.log("inside fire query ===============================");
-        let highscoresSnapShot = {};
-        let speedScoresSnapShot = {};
-        let timeScoresSnapShot = {};
+        let normalScoresSnapShot = [];
+        let speedScoresSnapShot = [];
+        let timeScoresSnapShot = [];
 
         let prevScore = 999999999;
         let pos = 1;
         let tiedIndex = 1;
 
-        let highscoreData = [];
-        let speedScoreData = [];
-        let timeScoreData = [];
+        let normalScoresData = [];
+        let speedScoresData = [];
+        let timeScoresData = [];
 
         if (props.route.params.loggedInUser) {
-            await firebase
-                .firestore()
-                .collection("users")
-                .doc(props.route.params.loggedInUser.id)
-                .get()
-                .then(function (doc) {
-                    if (doc.exists) {
-                        setCurrentHighscore(doc.data().highscore);
-                        setCurrentSpeedScore(doc.data().speedScore);
-                        setCurrentTimeScore(doc.data().timeScore);
-                    } else {
-                        // doc.data() will be undefined in this case
-                        console.log("No such document!");
-                    }
-                });
+            // await firebase
+            //     .firestore()
+            //     .collection("users")
+            //     .doc(props.route.params.loggedInUser.id)
+            //     .get()
+            //     .then(function (doc) {
+            //         if (doc.exists) {
+            //             setCurrentHighscore(doc.data().highscore);
+            //             setCurrentSpeedScore(doc.data().speedScore);
+            //             setCurrentTimeScore(doc.data().timeScore);
+            //         } else {
+            //             // doc.data() will be undefined in this case
+            //             console.log("No such document!");
+            //         }
+            //     });
+
+            setCurrentHighscore(
+                props.route.params.loggedInUser.highscore >
+                    props.route.params.getCurrentHighscore
+                    ? props.route.params.loggedInUser.highscore
+                    : props.route.params.getCurrentHighscore
+            );
+            setCurrentSpeedScore(
+                props.route.params.loggedInUser.speedScore >
+                    props.route.params.getCurrentSpeedScore
+                    ? props.route.params.loggedInUser.speedScore
+                    : props.route.params.getCurrentSpeedScore
+            );
+            setCurrentTimeScore(
+                props.route.params.loggedInUser.timeScore <
+                    props.route.params.getCurrentTimeScore
+                    ? props.route.params.loggedInUser.timeScore
+                    : props.route.params.getCurrentTimeScore
+            );
         }
         console.log("after user loggin~~~~~~~~~~~~~~~");
 
@@ -103,16 +122,27 @@ export default function LeaderBoard(props) {
                 "making highscore query ==============================="
             );
 
-            highscoresSnapShot = await firebase
+            await firebase
                 .firestore()
-                .collection("users")
-                .where("highscore", ">", 0)
-                .orderBy("highscore", "desc")
-                .limit(10)
-                .get();
+                .collection("highscores")
+                .doc("normal")
+                .get()
+                .then(function (doc) {
+                    if (doc.exists) {
+                        normalScoresSnapShot = Object.entries(doc.data()).sort(
+                            (a, b) => b[1] - a[1]
+                        );
+                    } else {
+                        // doc.data() will be undefined in this case
+                        console.log("No such document!");
+                    }
+                })
+                .catch(function (error) {
+                    console.log("Error getting document:", error);
+                });
 
-            highscoreData = await highscoresSnapShot.docs.map((doc, i) => {
-                const highscore = doc.data().highscore;
+            normalScoresData = normalScoresSnapShot.map((entry, i) => {
+                const highscore = entry[1];
                 let rank = 0;
 
                 if (highscore < prevScore) {
@@ -126,39 +156,88 @@ export default function LeaderBoard(props) {
                 prevScore = highscore;
 
                 if (props.route.params.loggedInUser) {
-                    if (props.route.params.loggedInUser.id == doc.data().id) {
+                    if (props.route.params.loggedInUser.username == entry[0]) {
                         props.route.params.setCurrentHighscoreRank(rank);
                     }
                 }
                 return {
                     pos: rank,
-                    username: doc.data().username,
+                    username: entry[0],
                     highscore: highscore,
                 };
             });
 
-            props.route.params.setHighscoresRef(highscoreData);
+            props.route.params.setHighscoresRef(normalScoresData);
+
+            // highscoresSnapShot = await firebase
+            //     .firestore()
+            //     .collection("users")
+            //     .where("highscore", ">", 0)
+            //     .orderBy("highscore", "desc")
+            //     .limit(10)
+            //     .get();
+
+            // highscoreData = await highscoresSnapShot.docs.map((doc, i) => {
+            //     const highscore = doc.data().highscore;
+            //     let rank = 0;
+
+            //     if (highscore < prevScore) {
+            //         rank = pos;
+            //         tiedIndex = rank;
+            //         pos++;
+            //     } else {
+            //         rank = tiedIndex;
+            //         if (pos == 1) pos = 2;
+            //     }
+            //     prevScore = highscore;
+
+            //     if (props.route.params.loggedInUser) {
+            //         if (props.route.params.loggedInUser.id == doc.data().id) {
+            //             props.route.params.setCurrentHighscoreRank(rank);
+            //         }
+            //     }
+            //     return {
+            //         pos: rank,
+            //         username: doc.data().username,
+            //         highscore: highscore,
+            //     };
+            // });
+
+            // props.route.params.setHighscoresRef(highscoreData);
         }
 
         if (props.route.params.getSpeedScoresRef() == "empty") {
             console.log(
                 "making speedscore query ==============================="
             );
-            speedScoresSnapShot = await firebase
+
+            await firebase
                 .firestore()
-                .collection("users")
-                .where("speedScore", ">", 0)
-                .orderBy("speedScore", "desc")
-                .limit(10)
-                .get();
+                .collection("highscores")
+                .doc("speed")
+                .get()
+                .then(function (doc) {
+                    if (doc.exists) {
+                        speedScoresSnapShot = Object.entries(doc.data()).sort(
+                            (a, b) => b[1] - a[1]
+                        );
+                    } else {
+                        // doc.data() will be undefined in this case
+                        console.log("No such document!");
+                    }
+                })
+                .catch(function (error) {
+                    console.log("Error getting document:", error);
+                });
 
             prevScore = 999999999;
             pos = 1;
             tiedIndex = 1;
 
-            speedScoreData = await speedScoresSnapShot.docs.map((doc) => {
-                const highscore = doc.data().speedScore;
+            speedScoresData = speedScoresSnapShot.map((entry, i) => {
+                const highscore = entry[1];
                 let rank = 0;
+
                 if (highscore < prevScore) {
                     rank = pos;
                     tiedIndex = rank;
@@ -170,39 +249,90 @@ export default function LeaderBoard(props) {
                 prevScore = highscore;
 
                 if (props.route.params.loggedInUser) {
-                    if (props.route.params.loggedInUser.id == doc.data().id) {
+                    if (props.route.params.loggedInUser.username == entry[0]) {
                         props.route.params.setCurrentSpeedScoreRank(rank);
                     }
                 }
                 return {
                     pos: rank,
-                    username: doc.data().username,
-                    highscore: doc.data().speedScore,
+                    username: entry[0],
+                    highscore: highscore,
                 };
             });
 
-            props.route.params.setSpeedScoresRef(speedScoreData);
+            props.route.params.setSpeedScoresRef(speedScoresData);
+            // speedScoresSnapShot = await firebase
+            //     .firestore()
+            //     .collection("users")
+            //     .where("speedScore", ">", 0)
+            //     .orderBy("speedScore", "desc")
+            //     .limit(10)
+            //     .get();
+
+            // prevScore = 999999999;
+            // pos = 1;
+            // tiedIndex = 1;
+
+            // speedScoreData = await speedScoresSnapShot.docs.map((doc) => {
+            //     const highscore = doc.data().speedScore;
+            //     let rank = 0;
+            //     if (highscore < prevScore) {
+            //         rank = pos;
+            //         tiedIndex = rank;
+            //         pos++;
+            //     } else {
+            //         rank = tiedIndex;
+            //         if (pos == 1) pos = 2;
+            //     }
+            //     prevScore = highscore;
+
+            //     if (props.route.params.loggedInUser) {
+            //         if (props.route.params.loggedInUser.id == doc.data().id) {
+            //             props.route.params.setCurrentSpeedScoreRank(rank);
+            //         }
+            //     }
+            //     return {
+            //         pos: rank,
+            //         username: doc.data().username,
+            //         highscore: doc.data().speedScore,
+            //     };
+            // });
+
+            // props.route.params.setSpeedScoresRef(speedScoreData);
         }
 
         if (props.route.params.getTimeScoresRef() == "empty") {
             console.log(
                 "making timescore query ==============================="
             );
-            timeScoresSnapShot = await firebase
+
+            await firebase
                 .firestore()
-                .collection("users")
-                .where("timeScore", ">", 0)
-                .orderBy("timeScore")
-                .limit(10)
-                .get();
+                .collection("highscores")
+                .doc("time")
+                .get()
+                .then(function (doc) {
+                    if (doc.exists) {
+                        timeScoresSnapShot = Object.entries(doc.data()).sort(
+                            (a, b) => a[1] - b[1]
+                        );
+                    } else {
+                        // doc.data() will be undefined in this case
+                        console.log("No such document!");
+                    }
+                })
+                .catch(function (error) {
+                    console.log("Error getting document:", error);
+                });
 
             prevScore = 0;
             pos = 1;
             tiedIndex = 1;
 
-            timeScoreData = await timeScoresSnapShot.docs.map((doc) => {
-                const highscore = doc.data().timeScore;
+            timeScoresData = timeScoresSnapShot.map((entry, i) => {
+                const highscore = entry[1];
                 let rank = 0;
+
                 if (highscore > prevScore) {
                     rank = pos;
                     tiedIndex = rank;
@@ -214,22 +344,60 @@ export default function LeaderBoard(props) {
                 prevScore = highscore;
 
                 if (props.route.params.loggedInUser) {
-                    if (props.route.params.loggedInUser.id == doc.data().id) {
+                    if (props.route.params.loggedInUser.username == entry[0]) {
                         props.route.params.setCurrentTimeScoreRank(rank);
                     }
                 }
                 return {
                     pos: rank,
-                    username: doc.data().username,
-                    highscore: doc.data().timeScore,
+                    username: entry[0],
+                    highscore: highscore,
                 };
             });
-            props.route.params.setTimeScoresRef(timeScoreData);
+
+            props.route.params.setTimeScoresRef(timeScoresData);
+            // timeScoresSnapShot = await firebase
+            //     .firestore()
+            //     .collection("users")
+            //     .where("timeScore", ">", 0)
+            //     .orderBy("timeScore")
+            //     .limit(10)
+            //     .get();
+
+            // prevScore = 0;
+            // pos = 1;
+            // tiedIndex = 1;
+
+            // timeScoreData = await timeScoresSnapShot.docs.map((doc) => {
+            //     const highscore = doc.data().timeScore;
+            //     let rank = 0;
+            //     if (highscore > prevScore) {
+            //         rank = pos;
+            //         tiedIndex = rank;
+            //         pos++;
+            //     } else {
+            //         rank = tiedIndex;
+            //         if (pos == 1) pos = 2;
+            //     }
+            //     prevScore = highscore;
+
+            //     if (props.route.params.loggedInUser) {
+            //         if (props.route.params.loggedInUser.id == doc.data().id) {
+            //             props.route.params.setCurrentTimeScoreRank(rank);
+            //         }
+            //     }
+            //     return {
+            //         pos: rank,
+            //         username: doc.data().username,
+            //         highscore: doc.data().timeScore,
+            //     };
+            // });
+            // props.route.params.setTimeScoresRef(timeScoreData);
         }
 
-        // highscoresRef.current = highscoreData;
-        // speedScoresRef.current = speedScoreData;
-        // timeScoresRef.current = timeScoreData;
+        // normalScoresRef.current = normalScoresData;
+        // speedScoresRef.current = speedScoresData;
+        // timeScoresRef.current = timeScoresData;
         console.log("end of query");
         setHighscores(props.route.params.getHighscoresRef());
     };
