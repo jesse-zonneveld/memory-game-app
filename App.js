@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect } from "react";
+import React, { useState } from "react";
 import { AppLoading } from "expo";
 import * as Font from "expo-font";
 import { Asset } from "expo-asset";
@@ -428,7 +428,6 @@ import {
     faPooStorm,
     faIcicles,
 } from "@fortawesome/free-solid-svg-icons";
-import { render } from "react-dom";
 
 function cacheImages(images) {
     return images.map((image) => {
@@ -437,6 +436,12 @@ function cacheImages(images) {
         } else {
             return Asset.fromModule(image).downloadAsync();
         }
+    });
+}
+
+function cacheSounds(sounds) {
+    return sounds.map((sound) => {
+        return Asset.fromModule(sound).downloadAsync();
     });
 }
 
@@ -891,11 +896,10 @@ export default function App() {
                 setNoUser(true);
             }
         });
-        return "done";
     };
 
     const _loadAssetsAsync = async () => {
-        const firebaseData = await firebaseAsync();
+        await firebaseAsync();
         const imageAssets = cacheImages([
             require("./assets/images/bg2X.png"),
             require("./assets/images/bannerBlue.png"),
@@ -904,45 +908,30 @@ export default function App() {
             require("./assets/images/confetti.gif"),
         ]);
 
+        const soundAssets = cacheSounds([
+            require("./assets/sounds/correct.wav"),
+            require("./assets/sounds/incorrect.mp3"),
+            require("./assets/sounds/win.wav"),
+            require("./assets/sounds/ding.wav"),
+            require("./assets/sounds/firstSong.wav"),
+        ]);
+
         const fontAssets = cacheFonts([
             { "nunito-regular": require("./assets/fonts/Nunito-Regular.ttf") },
             { "nunito-bold": require("./assets/fonts/Nunito-Bold.ttf") },
             { "nunito-light": require("./assets/fonts/Nunito-Light.ttf") },
         ]);
 
-        await Promise.all([...imageAssets, ...fontAssets]);
+        await Promise.all([...imageAssets, ...soundAssets, ...fontAssets]);
     };
 
     const _handleLoadingError = (error) => {
-        // In this case, you might want to report the error to your error
-        // reporting service, for example Sentry
         console.warn(error);
     };
 
     const _handleFinishLoading = () => {
         setAppIsReady(true);
     };
-
-    // useLayoutEffect(() => {
-    //     firebaseAsync();
-    // }, []);
-
-    // let [fontsLoaded] = useFonts({
-    //     "nunito-regular": require("./assets/fonts/Nunito-Regular.ttf"),
-    //     "nunito-bold": require("./assets/fonts/Nunito-Bold.ttf"),
-    //     "nunito-light": require("./assets/fonts/Nunito-Light.ttf"),
-    // });
-
-    // if (fontsLoaded && (user || noUser)) {
-    //     return (
-    //         <AppNavigator
-    //             userData={user}
-    //             mainDeck={Object.keys(library.definitions.fas)}
-    //         />
-    //     );
-    // } else {
-    //     return <AppLoading />;
-    // }
 
     if (appIsReady && (user || noUser)) {
         return (

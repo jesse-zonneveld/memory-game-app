@@ -10,7 +10,7 @@ import {
     Modal,
     Keyboard,
     Image,
-    Dimensions,
+    TouchableOpacity,
 } from "react-native";
 import FlatButton from "../shared/flatButton";
 import LoginForm from "./Login";
@@ -19,47 +19,50 @@ import { Audio } from "expo-av";
 
 import { AdMobBanner } from "expo-ads-admob";
 import { AsyncStorage } from "react-native";
+import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
+import { faMusic } from "@fortawesome/free-solid-svg-icons";
+import { faSlash } from "@fortawesome/free-solid-svg-icons";
 
 export default function Home(props) {
     const [modalStatus, setModalStatus] = useState("closed");
     const [loggedInUser, setLoggedInUser] = useState(props.extraData.userData);
-    const [currentHighscore, setCurrentHighscore] = useState(0);
+    const [currentNormalScore, setCurrentNormalScore] = useState(0);
     const [currentSpeedScore, setCurrentSpeedScore] = useState(0);
     const [currentTimeScore, setCurrentTimeScore] = useState(0);
     const gamesPlayed = useRef(0);
-    const highscoresRef = useRef("empty");
+    const normalScoresRef = useRef("empty");
     const speedScoresRef = useRef("empty");
     const timeScoresRef = useRef("empty");
-    const currentHighscoreRank = useRef();
+    const currentNormalScoreRank = useRef();
     const currentSpeedScoreRank = useRef();
     const currentTimeScoreRank = useRef();
+    const music = useRef();
+    const musicStatusRef = useRef("noSound");
+    const [musicStatus, setMusicStatus] = useState("noSound");
+
+    useEffect(() => {
+        playRecording();
+    }, []);
 
     useLayoutEffect(() => {
         if (loggedInUser) {
-            console.log("inside logged in user");
-            setCurrentHighscore(loggedInUser.highscore);
+            setCurrentNormalScore(loggedInUser.highscore);
             setCurrentSpeedScore(loggedInUser.speedScore);
             setCurrentTimeScore(loggedInUser.timeScore);
-            retrieveData("highscore");
+            retrieveData("normalScore");
             retrieveData("speedScore");
             retrieveData("timeScore");
-            // storeData("highscore", loggedInUser.highscore.toString());
-            // storeData("speedScore", loggedInUser.speedScore.toString());
-            // storeData("timeScore", loggedInUser.timeScore.toString());
         } else {
-            console.log("inside no user");
-
-            retrieveData("highscore");
+            retrieveData("normalScore");
             retrieveData("speedScore");
             retrieveData("timeScore");
-            setTimeout(() => setModalStatus("reg"), 2000);
+            setTimeout(() => setModalStatus("reg"), 1500);
         }
     }, [loggedInUser]);
 
     const storeData = async (key, value) => {
         try {
             await AsyncStorage.setItem(key, value);
-            console.log(key, value, " stored");
         } catch (error) {
             console.log("error storing data");
         }
@@ -71,10 +74,9 @@ export default function Home(props) {
             value = await AsyncStorage.getItem(key);
             if (value !== null) {
                 if (loggedInUser) {
-                    if (key == "highscore") {
-                        console.log("highscore User", value);
+                    if (key == "normalScore") {
                         if (+value > loggedInUser.highscore) {
-                            setCurrentHighscore(+value);
+                            setCurrentNormalScore(+value);
                             return firebase
                                 .firestore()
                                 .collection("users")
@@ -86,7 +88,7 @@ export default function Home(props) {
                                     console.log(
                                         "Document successfully updated!"
                                     );
-                                    storeData("highscore", "0");
+                                    storeData("normalScore", "0");
                                 })
                                 .catch(function (error) {
                                     console.error(
@@ -96,7 +98,6 @@ export default function Home(props) {
                                 });
                         }
                     } else if (key == "speedScore") {
-                        console.log("speedScore User", value);
                         if (+value > loggedInUser.speedScore) {
                             setCurrentSpeedScore(+value);
 
@@ -121,7 +122,6 @@ export default function Home(props) {
                                 });
                         }
                     } else if (key == "timeScore") {
-                        console.log("timeScore User", value);
                         if (+value > loggedInUser.timeScore) {
                             setCurrentTimeScore(+value);
 
@@ -147,19 +147,16 @@ export default function Home(props) {
                         }
                     }
                 } else {
-                    if (key == "highscore") {
-                        console.log("highscore no user", value);
-                        setCurrentHighscore(+value);
+                    if (key == "normalScore") {
+                        setCurrentNormalScore(+value);
                     } else if (key == "speedScore") {
-                        console.log("speedScore no user", +value);
                         setCurrentSpeedScore(+value);
                     } else if (key == "timeScore") {
-                        console.log("timeScore no user", value);
                         setCurrentTimeScore(+value);
                     }
                 }
             } else {
-                console.log(key, " empty");
+                console.log(key, "empty");
             }
         } catch (error) {
             console.log("error retreiving data");
@@ -181,6 +178,76 @@ export default function Home(props) {
         }
     };
 
+    const playRecording = async () => {
+        const { sound } = await Audio.Sound.createAsync(
+            require("../assets/sounds/firstSong.wav"),
+            {
+                shouldPlay: true,
+                isLooping: true,
+            },
+            updateScreenForSoundStatus
+        );
+        music.current = sound;
+        setMusicStatus("playing");
+    };
+
+    const updateScreenForSoundStatus = (status) => {
+        if (status.isPlaying && musicStatus !== "playing") {
+            setMusicStatus("playing");
+            musicStatusRef.current = "playing";
+        } else if (!status.isPlaying && musicStatus === "playing") {
+            setMusicStatus("donePause");
+            musicStatusRef.current = "donePause";
+        }
+    };
+
+    const pauseAndPlayRecording = async (fromOtherScreen = false) => {
+        let status;
+        if (fromOtherScreen) {
+            status = musicStatusRef.current;
+        } else {
+            status = musicStatus;
+        }
+        if (music.current) {
+            if (status == "playing") {
+                console.log("pausing...");
+                await music.current.pauseAsync();
+                console.log("paused!");
+                setMusicStatus("donePause");
+                musicStatusRef.current = "donePause";
+            } else {
+                console.log("playing...");
+                await music.current.playAsync();
+                console.log("playing!");
+
+                setMusicStatus("playing");
+                musicStatusRef.current = "playing";
+            }
+        }
+    };
+
+    const syncPauseAndPlayRecording = () => {
+        if (music.current) {
+            if (musicStatus == "playing") {
+                music.current.pauseAsync();
+            } else {
+                music.current.playAsync();
+            }
+        }
+    };
+
+    const playAndPause = () => {
+        switch (musicStatus) {
+            case "noSound":
+                playRecording();
+                break;
+            case "donePause":
+            case "playing":
+                pauseAndPlayRecording();
+                break;
+        }
+    };
+
     const increaseGamesPlayed = () => {
         gamesPlayed.current = gamesPlayed.current + 1;
     };
@@ -193,37 +260,39 @@ export default function Home(props) {
         soundPress();
 
         props.navigation.navigate("LeaderBoard", {
-            loggedInUser: loggedInUser,
-            getCurrentHighscore: currentHighscore,
-            getCurrentSpeedScore: currentSpeedScore,
-            getCurrentTimeScore: currentTimeScore,
-            getHighscoresRef: getHighscoresRef,
-            getSpeedScoresRef: getSpeedScoresRef,
-            getTimeScoresRef: getTimeScoresRef,
-            setHighscoresRef: setHighscoresRef,
-            setSpeedScoresRef: setSpeedScoresRef,
-            setTimeScoresRef: setTimeScoresRef,
-            getCurrentHighscoreRank: getCurrentHighscoreRank,
-            getCurrentSpeedScoreRank: getCurrentSpeedScoreRank,
-            getCurrentTimeScoreRank: getCurrentTimeScoreRank,
-            setCurrentHighscoreRank: setCurrentHighscoreRank,
-            setCurrentSpeedScoreRank: setCurrentSpeedScoreRank,
-            setCurrentTimeScoreRank: setCurrentTimeScoreRank,
+            loggedInUser,
+            currentNormalScore,
+            currentSpeedScore,
+            currentTimeScore,
+            getNormalScoresRef,
+            getSpeedScoresRef,
+            getTimeScoresRef,
+            setNormalScoresRef,
+            setSpeedScoresRef,
+            setTimeScoresRef,
+            getCurrentNormalScoreRank,
+            getCurrentSpeedScoreRank,
+            getCurrentTimeScoreRank,
+            setCurrentNormalScoreRank,
+            setCurrentSpeedScoreRank,
+            setCurrentTimeScoreRank,
+            pauseAndPlayRecording,
+            musicIsPlaying: musicStatus == "playing" ? true : false,
         });
     };
 
-    const setHighscoresRef = (highscores) => {
-        highscoresRef.current = highscores;
+    const setNormalScoresRef = (normalScores) => {
+        normalScoresRef.current = normalScores;
     };
-    const setSpeedScoresRef = (highscores) => {
-        speedScoresRef.current = highscores;
+    const setSpeedScoresRef = (speedScores) => {
+        speedScoresRef.current = speedScores;
     };
-    const setTimeScoresRef = (highscores) => {
-        timeScoresRef.current = highscores;
+    const setTimeScoresRef = (timeScores) => {
+        timeScoresRef.current = timeScores;
     };
 
-    const getHighscoresRef = () => {
-        return highscoresRef.current;
+    const getNormalScoresRef = () => {
+        return normalScoresRef.current;
     };
     const getSpeedScoresRef = () => {
         return speedScoresRef.current;
@@ -232,8 +301,8 @@ export default function Home(props) {
         return timeScoresRef.current;
     };
 
-    const setCurrentHighscoreRank = (rank) => {
-        currentHighscoreRank.current = rank;
+    const setCurrentNormalScoreRank = (rank) => {
+        currentNormalScoreRank.current = rank;
     };
     const setCurrentSpeedScoreRank = (rank) => {
         currentSpeedScoreRank.current = rank;
@@ -242,18 +311,14 @@ export default function Home(props) {
         currentTimeScoreRank.current = rank;
     };
 
-    const getCurrentHighscoreRank = () => {
-        return currentHighscoreRank.current;
+    const getCurrentNormalScoreRank = () => {
+        return currentNormalScoreRank.current;
     };
     const getCurrentSpeedScoreRank = () => {
         return currentSpeedScoreRank.current;
     };
     const getCurrentTimeScoreRank = () => {
         return currentTimeScoreRank.current;
-    };
-
-    const handleSandboxPress = () => {
-        props.navigation.navigate("Sandbox");
     };
 
     const handleLogoutPress = () => {
@@ -265,40 +330,23 @@ export default function Home(props) {
             .then(() => {
                 console.log("user logged out:");
             });
-        storeData("highscore", "0");
+        storeData("normalScore", "0");
         storeData("speedScore", "0");
         storeData("timeScore", "0");
         setLoggedInUser(null);
-        setCurrentHighscore(0);
+        setCurrentNormalScore(0);
         setCurrentSpeedScore(0);
         setCurrentTimeScore(0);
-        setCurrentHighscoreRank();
+        setCurrentNormalScoreRank();
         setCurrentSpeedScoreRank();
         setCurrentTimeScoreRank();
         gamesPlayed.current = 0;
-        highscoresRef.current = "empty";
+        normalScoresRef.current = "empty";
         speedScoresRef.current = "empty";
         timeScoresRef.current = "empty";
     };
 
-    // const handleAddHighScorePress = () => {
-    //     return firebase
-    //         .firestore()
-    //         .collection("users")
-    //         .doc(loggedInUser.id)
-    //         .update({
-    //             highscore: 1000,
-    //         })
-    //         .then(function () {
-    //             console.log("Document successfully updated!");
-    //         })
-    //         .catch(function (error) {
-    //             console.error("Error updating document: ", error);
-    //         });
-    // };
-
     const handleHowToPlayPress = () => {
-        // pressSound.current.playAsync();
         soundPress();
         props.navigation.navigate("HowToPlay");
     };
@@ -306,68 +354,39 @@ export default function Home(props) {
     const handleGameModesPress = () => {
         soundPress();
 
-        if (loggedInUser) {
-            props.navigation.navigate("GameModes", {
-                loggedInUser: loggedInUser,
-                currentHighscore: currentHighscore,
-                currentSpeedScore: currentSpeedScore,
-                currentTimeScore: currentTimeScore,
-                setCurrentHighscore: setCurrentHighscore,
-                setCurrentSpeedScore: setCurrentSpeedScore,
-                setCurrentTimeScore: setCurrentTimeScore,
-                mainDeck: props.extraData.mainDeck,
-                getGamesPlayed: getGamesPlayed,
-                increaseGamesPlayed: increaseGamesPlayed,
-                setHighscoresRef: setHighscoresRef,
-                setSpeedScoresRef: setSpeedScoresRef,
-                setTimeScoresRef: setTimeScoresRef,
-                getHighscoresRef: getHighscoresRef,
-                getSpeedScoresRef: getSpeedScoresRef,
-                getTimeScoresRef: getTimeScoresRef,
-                getCurrentHighscoreRank: getCurrentHighscoreRank,
-                getCurrentSpeedScoreRank: getCurrentSpeedScoreRank,
-                getCurrentTimeScoreRank: getCurrentTimeScoreRank,
-                setCurrentHighscoreRank: setCurrentHighscoreRank,
-                setCurrentSpeedScoreRank: setCurrentSpeedScoreRank,
-                setCurrentTimeScoreRank: setCurrentTimeScoreRank,
-                storeData: storeData,
-            });
-        } else {
-            props.navigation.navigate("GameModes", {
-                loggedInUser: null,
-                currentHighscore: currentHighscore,
-                currentSpeedScore: currentSpeedScore,
-                currentTimeScore: currentTimeScore,
-                setCurrentHighscore: setCurrentHighscore,
-                setCurrentSpeedScore: setCurrentSpeedScore,
-                setCurrentTimeScore: setCurrentTimeScore,
-                mainDeck: props.extraData.mainDeck,
-                getGamesPlayed: getGamesPlayed,
-                increaseGamesPlayed: increaseGamesPlayed,
-                setHighscoresRef: setHighscoresRef,
-                setSpeedScoresRef: setSpeedScoresRef,
-                setTimeScoresRef: setTimeScoresRef,
-                getHighscoresRef: getHighscoresRef,
-                getSpeedScoresRef: getSpeedScoresRef,
-                getTimeScoresRef: getTimeScoresRef,
-                getCurrentHighscoreRank: getCurrentHighscoreRank,
-                getCurrentSpeedScoreRank: getCurrentSpeedScoreRank,
-                getCurrentTimeScoreRank: getCurrentTimeScoreRank,
-                setCurrentHighscoreRank: setCurrentHighscoreRank,
-                setCurrentSpeedScoreRank: setCurrentSpeedScoreRank,
-                setCurrentTimeScoreRank: setCurrentTimeScoreRank,
-                storeData: storeData,
-            });
-        }
+        props.navigation.navigate("GameModes", {
+            loggedInUser,
+            mainDeck: props.extraData.mainDeck,
+            currentNormalScore,
+            currentSpeedScore,
+            currentTimeScore,
+            setCurrentNormalScore,
+            setCurrentSpeedScore,
+            setCurrentTimeScore,
+            getGamesPlayed,
+            increaseGamesPlayed,
+            setNormalScoresRef,
+            setSpeedScoresRef,
+            setTimeScoresRef,
+            getNormalScoresRef,
+            getSpeedScoresRef,
+            getTimeScoresRef,
+            getCurrentNormalScoreRank,
+            getCurrentSpeedScoreRank,
+            getCurrentTimeScoreRank,
+            setCurrentNormalScoreRank,
+            setCurrentSpeedScoreRank,
+            setCurrentTimeScoreRank,
+            storeData,
+            pauseAndPlayRecording,
+            musicStatusRef: musicStatusRef.current,
+        });
     };
 
     const fancyTimeFormat = (duration) => {
-        // Hours, minutes and seconds
         var hrs = ~~(duration / 3600);
         var mins = ~~((duration % 3600) / 60);
         var secs = ~~duration % 60;
-
-        // Output like "1:01" or "4:03:59" or "123:03:59"
         var ret = "";
 
         if (hrs > 0) {
@@ -387,6 +406,18 @@ export default function Home(props) {
                 direction={"left"}
                 images={[require("../assets/images/doodle3c.jpg")]}
             />
+            <TouchableOpacity style={styles.musicButton} onPress={playAndPause}>
+                {musicStatus != "playing" ? (
+                    <FontAwesomeIcon
+                        style={styles.musicSlash}
+                        icon={faSlash}
+                        size={24}
+                    />
+                ) : (
+                    <Text></Text>
+                )}
+                <FontAwesomeIcon icon={faMusic} size={24} />
+            </TouchableOpacity>
             <Image
                 source={require("../assets/images/bannerBlue.png")}
                 style={styles.banner}
@@ -397,25 +428,27 @@ export default function Home(props) {
                     <Text style={styles.usernameText}>
                         {loggedInUser.username}
                     </Text>
-                    <View style={styles.scoresContainer}>
-                        <Text style={styles.bestText}>
-                            Best Score:{" "}
-                            <Text style={styles.scoreText}>
-                                {currentHighscore}
+                    <View style={styles.scoresOuterContainer}>
+                        <View style={styles.scoresContainer}>
+                            <Text style={styles.bestText}>
+                                Normal:{" "}
+                                <Text style={styles.scoreText}>
+                                    {currentNormalScore}
+                                </Text>
                             </Text>
-                        </Text>
-                        <Text style={styles.bestText}>
-                            Best Speed:{" "}
-                            <Text style={styles.speedText}>
-                                {currentSpeedScore}
+                            <Text style={styles.bestText}>
+                                Speed:{" "}
+                                <Text style={styles.speedText}>
+                                    {currentSpeedScore}
+                                </Text>
                             </Text>
-                        </Text>
-                        <Text style={styles.bestText}>
-                            Best Time:{" "}
-                            <Text style={styles.timeText}>
-                                {fancyTimeFormat(currentTimeScore)}
+                            <Text style={styles.bestText}>
+                                Time:{" "}
+                                <Text style={styles.timeText}>
+                                    {fancyTimeFormat(currentTimeScore)}
+                                </Text>
                             </Text>
-                        </Text>
+                        </View>
                     </View>
                 </View>
             ) : (
@@ -429,18 +462,6 @@ export default function Home(props) {
                 }
             >
                 <FlatButton title="Game Modes" onPress={handleGameModesPress} />
-                {/* <FlatButton
-                    title="Speed Game"
-                    onPress={() => handleStartGamePress(5, 10, 3)}
-                />
-                <FlatButton
-                    title="Endless Game"
-                    onPress={() => handleStartGamePress(10, 100, 9)}
-                /> */}
-                {/* <FlatButton
-                    title="add highscore"
-                    onPress={handleAddHighScorePress}
-                /> */}
                 <FlatButton
                     title="How to Play"
                     onPress={handleHowToPlayPress}
@@ -456,11 +477,17 @@ export default function Home(props) {
                     <View>
                         <FlatButton
                             title="Register Account"
-                            onPress={() => setModalStatus("reg")}
+                            onPress={() => {
+                                soundPress();
+                                setModalStatus("reg");
+                            }}
                         />
                         <FlatButton
                             title="Login"
-                            onPress={() => setModalStatus("login")}
+                            onPress={() => {
+                                soundPress();
+                                setModalStatus("login");
+                            }}
                         />
                     </View>
                 )}
@@ -471,8 +498,6 @@ export default function Home(props) {
                 adUnitID="ca-app-pub-3940256099942544/2934735716"
                 onDidFailToReceiveAdWithError={() => console.log("ad error")}
             />
-
-            {/* <FlatButton title="Sandbox" onPress={handleSandboxPress} /> */}
 
             <Modal visible={modalStatus == "reg"} animationType="slide">
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -504,6 +529,14 @@ export default function Home(props) {
 }
 
 const styles = StyleSheet.create({
+    musicButton: {
+        position: "absolute",
+        bottom: 60,
+        right: 10,
+    },
+    musicSlash: {
+        transform: [{ translateY: 25 }],
+    },
     container: {
         flex: 1,
         justifyContent: "center",
@@ -556,6 +589,7 @@ const styles = StyleSheet.create({
         borderColor: "black",
         position: "absolute",
         top: 180,
+        maxWidth: 362,
         paddingHorizontal: 40,
         paddingVertical: 10,
         backgroundColor: "rgba(255,255,255,0.8)",
@@ -569,8 +603,12 @@ const styles = StyleSheet.create({
 
         elevation: 5,
     },
-    scoresContainer: {
+    scoresOuterContainer: {
         width: "100%",
+        alignItems: "center",
+    },
+    scoresContainer: {
+        maxWidth: 150,
         alignItems: "flex-start",
     },
     usernameText: {

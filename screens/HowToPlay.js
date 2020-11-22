@@ -2,10 +2,27 @@ import React from "react";
 import { StyleSheet, Text, View, TouchableOpacity, Image } from "react-native";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { Audio } from "expo-av";
 
 export default function HowToPlay(props) {
     const handleBackToMenuPress = () => {
+        soundPress();
         props.navigation.navigate("Home");
+    };
+
+    const soundPress = async () => {
+        try {
+            const {
+                sound: soundObject,
+                status,
+            } = await Audio.Sound.createAsync(
+                require("../assets/sounds/ding.wav"),
+                { shouldPlay: true }
+            );
+            await soundObject.playAsync();
+        } catch (error) {
+            console.log(error);
+        }
     };
 
     return (

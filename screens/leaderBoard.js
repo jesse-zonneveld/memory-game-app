@@ -15,20 +15,32 @@ import { AppLoading } from "expo";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { AdMobInterstitial } from "expo-ads-admob";
+import { Audio } from "expo-av";
 
 export default function LeaderBoard(props) {
-    // const highscoresRef = useRef();
-    // const speedScoresRef = useRef();
-    // const timeScoresRef = useRef();
     const [highscores, setHighscores] = useState();
-    // const [currentHighscoreRank, setCurrentHighscoreRank] = useState();
-    const [currentHighscore, setCurrentHighscore] = useState();
-    // const [currentSpeedScoreRank, setCurrentSpeedScoreRank] = useState();
+    const [currentNormalScore, setCurrentNormalScore] = useState();
     const [currentSpeedScore, setCurrentSpeedScore] = useState();
-    // const [currentTimeScoreRank, setCurrentTimeScoreRank] = useState();
     const [currentTimeScore, setCurrentTimeScore] = useState();
+
     const handleBackToMenuPress = () => {
+        soundPress();
         props.navigation.navigate("Home");
+    };
+
+    const soundPress = async () => {
+        try {
+            const {
+                sound: soundObject,
+                status,
+            } = await Audio.Sound.createAsync(
+                require("../assets/sounds/ding.wav"),
+                { shouldPlay: true }
+            );
+            await soundObject.playAsync();
+        } catch (error) {
+            console.log(error);
+        }
     };
 
     const selectedButton = useRef("normal");
@@ -80,46 +92,30 @@ export default function LeaderBoard(props) {
         let timeScoresData = [];
 
         if (props.route.params.loggedInUser) {
-            // await firebase
-            //     .firestore()
-            //     .collection("users")
-            //     .doc(props.route.params.loggedInUser.id)
-            //     .get()
-            //     .then(function (doc) {
-            //         if (doc.exists) {
-            //             setCurrentHighscore(doc.data().highscore);
-            //             setCurrentSpeedScore(doc.data().speedScore);
-            //             setCurrentTimeScore(doc.data().timeScore);
-            //         } else {
-            //             // doc.data() will be undefined in this case
-            //             console.log("No such document!");
-            //         }
-            //     });
-
-            setCurrentHighscore(
+            setCurrentNormalScore(
                 props.route.params.loggedInUser.highscore >
-                    props.route.params.getCurrentHighscore
+                    props.route.params.currentNormalScore
                     ? props.route.params.loggedInUser.highscore
-                    : props.route.params.getCurrentHighscore
+                    : props.route.params.currentNormalScore
             );
             setCurrentSpeedScore(
                 props.route.params.loggedInUser.speedScore >
-                    props.route.params.getCurrentSpeedScore
+                    props.route.params.currentSpeedScore
                     ? props.route.params.loggedInUser.speedScore
-                    : props.route.params.getCurrentSpeedScore
+                    : props.route.params.currentSpeedScore
             );
             setCurrentTimeScore(
                 props.route.params.loggedInUser.timeScore <
-                    props.route.params.getCurrentTimeScore
+                    props.route.params.currentTimeScore
                     ? props.route.params.loggedInUser.timeScore
-                    : props.route.params.getCurrentTimeScore
+                    : props.route.params.currentTimeScore
             );
         }
         console.log("after user loggin~~~~~~~~~~~~~~~");
 
-        if (props.route.params.getHighscoresRef() == "empty") {
+        if (props.route.params.getNormalScoresRef() == "empty") {
             console.log(
-                "making highscore query ==============================="
+                "making normalScore query ==============================="
             );
 
             await firebase
@@ -157,7 +153,7 @@ export default function LeaderBoard(props) {
 
                 if (props.route.params.loggedInUser) {
                     if (props.route.params.loggedInUser.username == entry[0]) {
-                        props.route.params.setCurrentHighscoreRank(rank);
+                        props.route.params.setCurrentNormalScoreRank(rank);
                     }
                 }
                 return {
@@ -167,43 +163,7 @@ export default function LeaderBoard(props) {
                 };
             });
 
-            props.route.params.setHighscoresRef(normalScoresData);
-
-            // highscoresSnapShot = await firebase
-            //     .firestore()
-            //     .collection("users")
-            //     .where("highscore", ">", 0)
-            //     .orderBy("highscore", "desc")
-            //     .limit(10)
-            //     .get();
-
-            // highscoreData = await highscoresSnapShot.docs.map((doc, i) => {
-            //     const highscore = doc.data().highscore;
-            //     let rank = 0;
-
-            //     if (highscore < prevScore) {
-            //         rank = pos;
-            //         tiedIndex = rank;
-            //         pos++;
-            //     } else {
-            //         rank = tiedIndex;
-            //         if (pos == 1) pos = 2;
-            //     }
-            //     prevScore = highscore;
-
-            //     if (props.route.params.loggedInUser) {
-            //         if (props.route.params.loggedInUser.id == doc.data().id) {
-            //             props.route.params.setCurrentHighscoreRank(rank);
-            //         }
-            //     }
-            //     return {
-            //         pos: rank,
-            //         username: doc.data().username,
-            //         highscore: highscore,
-            //     };
-            // });
-
-            // props.route.params.setHighscoresRef(highscoreData);
+            props.route.params.setNormalScoresRef(normalScoresData);
         }
 
         if (props.route.params.getSpeedScoresRef() == "empty") {
@@ -261,44 +221,6 @@ export default function LeaderBoard(props) {
             });
 
             props.route.params.setSpeedScoresRef(speedScoresData);
-            // speedScoresSnapShot = await firebase
-            //     .firestore()
-            //     .collection("users")
-            //     .where("speedScore", ">", 0)
-            //     .orderBy("speedScore", "desc")
-            //     .limit(10)
-            //     .get();
-
-            // prevScore = 999999999;
-            // pos = 1;
-            // tiedIndex = 1;
-
-            // speedScoreData = await speedScoresSnapShot.docs.map((doc) => {
-            //     const highscore = doc.data().speedScore;
-            //     let rank = 0;
-            //     if (highscore < prevScore) {
-            //         rank = pos;
-            //         tiedIndex = rank;
-            //         pos++;
-            //     } else {
-            //         rank = tiedIndex;
-            //         if (pos == 1) pos = 2;
-            //     }
-            //     prevScore = highscore;
-
-            //     if (props.route.params.loggedInUser) {
-            //         if (props.route.params.loggedInUser.id == doc.data().id) {
-            //             props.route.params.setCurrentSpeedScoreRank(rank);
-            //         }
-            //     }
-            //     return {
-            //         pos: rank,
-            //         username: doc.data().username,
-            //         highscore: doc.data().speedScore,
-            //     };
-            // });
-
-            // props.route.params.setSpeedScoresRef(speedScoreData);
         }
 
         if (props.route.params.getTimeScoresRef() == "empty") {
@@ -356,56 +278,19 @@ export default function LeaderBoard(props) {
             });
 
             props.route.params.setTimeScoresRef(timeScoresData);
-            // timeScoresSnapShot = await firebase
-            //     .firestore()
-            //     .collection("users")
-            //     .where("timeScore", ">", 0)
-            //     .orderBy("timeScore")
-            //     .limit(10)
-            //     .get();
-
-            // prevScore = 0;
-            // pos = 1;
-            // tiedIndex = 1;
-
-            // timeScoreData = await timeScoresSnapShot.docs.map((doc) => {
-            //     const highscore = doc.data().timeScore;
-            //     let rank = 0;
-            //     if (highscore > prevScore) {
-            //         rank = pos;
-            //         tiedIndex = rank;
-            //         pos++;
-            //     } else {
-            //         rank = tiedIndex;
-            //         if (pos == 1) pos = 2;
-            //     }
-            //     prevScore = highscore;
-
-            //     if (props.route.params.loggedInUser) {
-            //         if (props.route.params.loggedInUser.id == doc.data().id) {
-            //             props.route.params.setCurrentTimeScoreRank(rank);
-            //         }
-            //     }
-            //     return {
-            //         pos: rank,
-            //         username: doc.data().username,
-            //         highscore: doc.data().timeScore,
-            //     };
-            // });
-            // props.route.params.setTimeScoresRef(timeScoreData);
         }
 
-        // normalScoresRef.current = normalScoresData;
-        // speedScoresRef.current = speedScoresData;
-        // timeScoresRef.current = timeScoresData;
         console.log("end of query");
-        setHighscores(props.route.params.getHighscoresRef());
+        setHighscores(props.route.params.getNormalScoresRef());
     };
 
     useLayoutEffect(() => {
-        AdMobInterstitial.addEventListener("interstitialDidLoad", () =>
-            console.log("videoloaded")
-        );
+        AdMobInterstitial.addEventListener("interstitialDidLoad", () => {
+            console.log("videoloaded");
+            if (props.route.params.musicIsPlaying) {
+                props.route.params.pauseAndPlayRecording(true);
+            }
+        });
         AdMobInterstitial.addEventListener("interstitialDidFailToLoad", () =>
             console.log("failedtoload")
         );
@@ -416,10 +301,13 @@ export default function LeaderBoard(props) {
             "interstitialWillLeaveApplication",
             () => console.log("leaveapp")
         );
-        AdMobInterstitial.addEventListener("interstitialDidClose", () =>
-            console.log("close")
-        );
-        AdMobInterstitial.removeAllListeners();
+        AdMobInterstitial.addEventListener("interstitialDidClose", () => {
+            console.log("close");
+            if (props.route.params.musicIsPlaying) {
+                props.route.params.pauseAndPlayRecording(true);
+            }
+            AdMobInterstitial.removeAllListeners();
+        });
         showVideoAd();
         firebaseQuery();
     }, []);
@@ -483,7 +371,7 @@ export default function LeaderBoard(props) {
                             selectedButton.current = "normal";
                             toggleWidth();
                             setHighscores(
-                                props.route.params.getHighscoresRef()
+                                props.route.params.getNormalScoresRef()
                             );
                         }}
                     >
@@ -559,10 +447,10 @@ export default function LeaderBoard(props) {
                             <View style={styles.posTextContainer}>
                                 <Text style={styles.cellText}>
                                     {selectedButton.current == "normal"
-                                        ? currentHighscore == 0
+                                        ? currentNormalScore == 0
                                             ? "NA"
-                                            : props.route.params.getCurrentHighscoreRank()
-                                            ? props.route.params.getCurrentHighscoreRank()
+                                            : props.route.params.getCurrentNormalScoreRank()
+                                            ? props.route.params.getCurrentNormalScoreRank()
                                             : Math.ceil(
                                                   ((highscores[0].highscore -
                                                       highscores[
@@ -574,7 +462,7 @@ export default function LeaderBoard(props) {
                                                       (highscores[
                                                           highscores.length - 1
                                                       ].highscore -
-                                                          currentHighscore) +
+                                                          currentNormalScore) +
                                                       highscores[
                                                           highscores.length - 1
                                                       ].pos
@@ -631,7 +519,7 @@ export default function LeaderBoard(props) {
                             <View style={styles.currentScoreTextContainer}>
                                 <Text style={styles.cellText}>
                                     {selectedButton.current == "normal"
-                                        ? currentHighscore
+                                        ? currentNormalScore
                                         : selectedButton.current == "speed"
                                         ? currentSpeedScore
                                         : fancyTimeFormat(currentTimeScore)}

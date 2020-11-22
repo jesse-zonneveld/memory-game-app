@@ -13,6 +13,83 @@ import * as yup from "yup";
 import FlatButton from "../shared/flatButton";
 
 let cachedSnapshot = "empty";
+const profanity = [
+    "anal",
+    "anus",
+    "arse",
+    "ass",
+    "ballsack",
+    "balls",
+    "bastard",
+    "bitch",
+    "biatch",
+    "bloody",
+    "blowjob",
+    "blow job",
+    "bollock",
+    "bollok",
+    "boner",
+    "boob",
+    "bugger",
+    "bum",
+    "butt",
+    "buttplug",
+    "clitoris",
+    "cock",
+    "coon",
+    "crap",
+    "cunt",
+    "damn",
+    "dick",
+    "dildo",
+    "dyke",
+    "fag",
+    "feck",
+    "fellate",
+    "fellatio",
+    "felching",
+    "fuck",
+    "fudgepacker",
+    "fudge packer",
+    "flange",
+    "Goddamn",
+    "God damn",
+    "hell",
+    "homo",
+    "jerk",
+    "jizz",
+    "knobend",
+    "knobend",
+    "labia",
+    "lmao",
+    "lmfao",
+    "muff",
+    "nigger",
+    "nigga",
+    "omg",
+    "penis",
+    "piss",
+    "poop",
+    "prick",
+    "pube",
+    "pussy",
+    "queer",
+    "scrotum",
+    "sex",
+    "shit",
+    "sh1t",
+    "slut",
+    "smegma",
+    "spunk",
+    "tit",
+    "tosser",
+    "turd",
+    "twat",
+    "vagina",
+    "wank",
+    "whore",
+    "wtf",
+];
 console.log(cachedSnapshot, "---------");
 const reviewSchema = yup.object({
     email: yup.string().email().required(),
@@ -22,22 +99,54 @@ const reviewSchema = yup.object({
         .required()
         .min(3)
         .max(15)
+        .test("Spaces_check", "No spaces allowed in username.", (val) => {
+            try {
+                return !val.includes(" ");
+            } catch (err) {
+                return false;
+            }
+        })
+        .test("profanity_check", "Inappropriate word used.", (val) => {
+            try {
+                if (val.length > 2) {
+                    return !profanity.some((word) =>
+                        val.toLowerCase().includes(word)
+                    );
+                }
+            } catch (err) {
+                return false;
+            }
+        })
         .test("unique_username", "Username already taken.", async (val) => {
-            console.log(cachedSnapshot == "empty");
             if (cachedSnapshot == "empty") {
                 console.log("request made");
-                cachedSnapshot = await firebase
+                const snapshot = await firebase
                     .firestore()
                     .collection("usernames")
-                    .get();
+                    .doc("usernamesDoc")
+                    .get()
+                    .then(function (doc) {
+                        if (doc.exists) {
+                            console.log(Object.keys(doc.data()));
+                            cachedSnapshot = Object.keys(doc.data());
+                        } else {
+                            console.log("No such document!");
+                        }
+                    })
+                    .catch(function (error) {
+                        console.log("Error getting document:", error);
+                    });
             }
 
-            const usernamesObject = cachedSnapshot.docs.map((doc) =>
-                doc.data()
-            );
-            const usernamesArray = Object.keys(usernamesObject[0]);
-
-            return !usernamesArray.includes(val);
+            try {
+                if (val.length > 2) {
+                    return !cachedSnapshot.some(
+                        (word) => word.toLowerCase() == val.toLowerCase()
+                    );
+                }
+            } catch (err) {
+                return false;
+            }
         }),
 });
 
@@ -143,6 +252,7 @@ export default function RegisterForm(props) {
                             placeholder="Password"
                             onChangeText={props.handleChange("password")}
                             returnKeyType="done"
+                            secureTextEntry={true}
                             value={props.values.password}
                             onBlur={props.handleBlur("password")}
                         />

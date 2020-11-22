@@ -15,6 +15,8 @@ import firebase from "../firebase/config";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { Audio } from "expo-av";
 import { AdMobBanner, AdMobInterstitial } from "expo-ads-admob";
+import { faMusic } from "@fortawesome/free-solid-svg-icons";
+import { faSlash } from "@fortawesome/free-solid-svg-icons";
 
 export default function TimeGame(props) {
     const playingDeck = useRef(
@@ -38,6 +40,9 @@ export default function TimeGame(props) {
     const seenCards = useRef([]);
     const stopTimer = useRef(false);
     const [confetti, setConfetti] = useState(false);
+    const [musicStatus, setMusicStatus] = useState(
+        props.route.params.musicStatus
+    );
 
     useLayoutEffect(() => {
         if (stopTimer.current == false) {
@@ -86,6 +91,14 @@ export default function TimeGame(props) {
         setTimeout(() => setConfetti(false), 5000);
     };
 
+    const switchMusicStatus = () => {
+        if (musicStatus == "playing") {
+            setMusicStatus("paused");
+        } else {
+            setMusicStatus("playing");
+        }
+    };
+
     const goodSound = async () => {
         try {
             const {
@@ -117,6 +130,9 @@ export default function TimeGame(props) {
     };
 
     const winSound = async () => {
+        if (musicStatus == "playing") {
+            props.route.params.pauseAndPlayRecording(true);
+        }
         try {
             const {
                 sound: soundObject,
@@ -126,6 +142,12 @@ export default function TimeGame(props) {
                 { shouldPlay: true }
             );
             await soundObject.playAsync();
+            if (musicStatus == "playing") {
+                await setTimeout(
+                    () => props.route.params.pauseAndPlayRecording(true),
+                    5500
+                );
+            }
         } catch (error) {
             console.log(error);
         }
@@ -237,9 +259,12 @@ export default function TimeGame(props) {
             props.route.params.getGamesPlayed() != 0
         ) {
             stopTimer.current = false;
-            AdMobInterstitial.addEventListener("interstitialDidLoad", () =>
-                console.log("videoloaded")
-            );
+            AdMobInterstitial.addEventListener("interstitialDidLoad", () => {
+                if (musicStatus == "playing") {
+                    props.route.params.pauseAndPlayRecording(true);
+                }
+                console.log("videoloaded");
+            });
             AdMobInterstitial.addEventListener(
                 "interstitialDidFailToLoad",
                 () => console.log("failedtoload")
@@ -252,6 +277,9 @@ export default function TimeGame(props) {
                 () => console.log("leaveapp")
             );
             AdMobInterstitial.addEventListener("interstitialDidClose", () => {
+                if (musicStatus == "playing") {
+                    props.route.params.pauseAndPlayRecording(true);
+                }
                 removeListenersForAd();
                 props.route.params.increaseGamesPlayed();
                 restartGame();
@@ -307,7 +335,7 @@ export default function TimeGame(props) {
     const updateHighscoreLoggedIn = async () => {
         if (bestScore == 0 || score < bestScore) {
             setBestScore(score);
-            props.route.params.setCurrentHighscore(score);
+            props.route.params.setHighscore(score);
             if (props.route.params.getTimeScoresRef()) {
                 if (
                     props.route.params.getTimeScoresRef()[
@@ -339,7 +367,7 @@ export default function TimeGame(props) {
             console.log("after");
             console.log(timeScoresFB);
 
-            if (timeScoresFB.length < 5) {
+            if (timeScoresFB.length < 200) {
                 await firebase
                     .firestore()
                     .collection("highscores")
@@ -389,23 +417,27 @@ export default function TimeGame(props) {
 
         props.navigation.navigate("LeaderBoard", {
             loggedInUser: props.route.params.loggedInUser,
-            getHighscoresRef: props.route.params.getHighscoresRef,
+            currentNormalScore: props.route.params.getCurrentNormalScore,
+            currentSpeedScore: props.route.params.getCurrentSpeedScore,
+            currentTimeScore: bestScore,
+            getNormalScoresRef: props.route.params.getNormalScoresRef,
             getSpeedScoresRef: props.route.params.getSpeedScoresRef,
             getTimeScoresRef: props.route.params.getTimeScoresRef,
-            setHighscoresRef: props.route.params.setHighscoresRef,
+            setNormalScoresRef: props.route.params.setNormalScoresRef,
             setSpeedScoresRef: props.route.params.setSpeedScoresRef,
             setTimeScoresRef: props.route.params.setTimeScoresRef,
-            getCurrentHighscoreRank: props.route.params.getCurrentHighscoreRank,
+            getCurrentNormalScoreRank:
+                props.route.params.getCurrentNormalScoreRank,
             getCurrentSpeedScoreRank:
                 props.route.params.getCurrentSpeedScoreRank,
             getCurrentTimeScoreRank: props.route.params.getCurrentTimeScoreRank,
-            setCurrentHighscoreRank: props.route.params.setCurrentHighscoreRank,
+            setCurrentNormalScoreRank:
+                props.route.params.setCurrentNormalScoreRank,
             setCurrentSpeedScoreRank:
                 props.route.params.setCurrentSpeedScoreRank,
             setCurrentTimeScoreRank: props.route.params.setCurrentTimeScoreRank,
-            getCurrentHighscore: props.route.params.getCurrentHighscore,
-            getCurrentSpeedScore: props.route.params.getCurrentSpeedScore,
-            getCurrentTimeScore: bestScore,
+            pauseAndPlayRecording: props.route.params.pauseAndPlayRecording,
+            musicIsPlaying: musicStatus == "playing" ? true : false,
         });
     };
 
@@ -435,6 +467,24 @@ export default function TimeGame(props) {
                 style={styles.exitButton}
                 onPress={handleExitPress}
             />
+            <TouchableOpacity
+                style={styles.musicButton}
+                onPress={async () => {
+                    await props.route.params.pauseAndPlayRecording(true);
+                    switchMusicStatus();
+                }}
+            >
+                {musicStatus != "playing" ? (
+                    <FontAwesomeIcon
+                        style={styles.musicSlash}
+                        icon={faSlash}
+                        size={24}
+                    />
+                ) : (
+                    <Text></Text>
+                )}
+                <FontAwesomeIcon icon={faMusic} size={24} />
+            </TouchableOpacity>
             {confetti ? (
                 <ImageBackground
                     style={styles.confetti}
@@ -557,6 +607,16 @@ const styles = StyleSheet.create({
         backgroundColor: "#FCFEEF",
         paddingTop: 50,
         flex: 1,
+    },
+    musicButton: {
+        position: "absolute",
+        bottom: 60,
+        right: 10,
+        zIndex: 20,
+    },
+    musicSlash: {
+        transform: [{ translateY: 25 }],
+        zIndex: 20,
     },
     ad: {
         position: "absolute",

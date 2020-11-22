@@ -82,6 +82,7 @@ export default function LoginForm(props) {
                             placeholder="Password"
                             onChangeText={props.handleChange("password")}
                             returnKeyType="done"
+                            secureTextEntry={true}
                             value={props.values.password}
                             onBlur={props.handleBlur("password")}
                         />
