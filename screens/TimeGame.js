@@ -17,6 +17,7 @@ import { Audio } from "expo-av";
 import { AdMobBanner, AdMobInterstitial } from "expo-ads-admob";
 import { faMusic } from "@fortawesome/free-solid-svg-icons";
 import { faSlash } from "@fortawesome/free-solid-svg-icons";
+import * as Network from "expo-network";
 
 export default function TimeGame(props) {
     const playingDeck = useRef(
@@ -253,41 +254,69 @@ export default function TimeGame(props) {
         );
     };
 
-    const checkForAd = () => {
+    const checkForAd = async () => {
+        const networkConnection = (await Network.getNetworkStateAsync())
+            .isConnected;
+
         if (
             props.route.params.getGamesPlayed() % 5 == 0 &&
             props.route.params.getGamesPlayed() != 0
         ) {
-            stopTimer.current = false;
-            AdMobInterstitial.addEventListener("interstitialDidLoad", () => {
-                if (musicStatus == "playing") {
-                    props.route.params.pauseAndPlayRecording(true);
-                }
-                console.log("videoloaded");
-            });
-            AdMobInterstitial.addEventListener(
-                "interstitialDidFailToLoad",
-                () => console.log("failedtoload")
-            );
-            AdMobInterstitial.addEventListener("interstitialDidOpen", () =>
-                console.log("opened")
-            );
-            AdMobInterstitial.addEventListener(
-                "interstitialWillLeaveApplication",
-                () => console.log("leaveapp")
-            );
-            AdMobInterstitial.addEventListener("interstitialDidClose", () => {
-                if (musicStatus == "playing") {
-                    props.route.params.pauseAndPlayRecording(true);
-                }
-                removeListenersForAd();
-                props.route.params.increaseGamesPlayed();
-                restartGame();
-            });
-            showVideoAd();
+            if (networkConnection) {
+                stopTimer.current = false;
+                AdMobInterstitial.addEventListener(
+                    "interstitialDidLoad",
+                    () => {
+                        if (musicStatus == "playing") {
+                            props.route.params.pauseAndPlayRecording(true);
+                        }
+                        console.log("videoloaded");
+                    }
+                );
+                AdMobInterstitial.addEventListener(
+                    "interstitialDidFailToLoad",
+                    () => console.log("failedtoload")
+                );
+                AdMobInterstitial.addEventListener("interstitialDidOpen", () =>
+                    console.log("opened")
+                );
+                AdMobInterstitial.addEventListener(
+                    "interstitialWillLeaveApplication",
+                    () => console.log("leaveapp")
+                );
+                AdMobInterstitial.addEventListener(
+                    "interstitialDidClose",
+                    () => {
+                        if (musicStatus == "playing") {
+                            props.route.params.pauseAndPlayRecording(true);
+                        }
+                        removeListenersForAd();
+                        props.route.params.increaseGamesPlayed();
+                        restartGame();
+                    }
+                );
+                showVideoAd();
+            } else {
+                handleNoConnection();
+            }
         } else {
             restartGame();
         }
+    };
+
+    const handleNoConnection = () => {
+        Alert.alert(
+            "Oops! No internet connection found",
+            "",
+            [
+                {
+                    text: "Back to Menu",
+                    onPress: () => props.navigation.navigate("Home"),
+                    style: "cancel",
+                },
+            ],
+            { cancelable: false }
+        );
     };
 
     const showVideoAd = async () => {
@@ -305,6 +334,8 @@ export default function TimeGame(props) {
     };
 
     const restartGame = () => {
+        stopTimer.current = false;
+
         soundPress();
 
         playingDeck.current = [...props.route.params.mainDeck]
@@ -320,7 +351,6 @@ export default function TimeGame(props) {
         setCardsLeft(props.route.params.deckSize);
         setCurrentTime(0);
         setScore(0);
-        stopTimer.current = false;
         prevBestScore.current = bestScore;
     };
 
@@ -340,13 +370,13 @@ export default function TimeGame(props) {
                 if (
                     props.route.params.getTimeScoresRef()[
                         props.route.params.getTimeScoresRef().length - 1
-                    ].highscore > score
+                    ].highscore > score ||
+                    props.route.params.getTimeScoresRef().length < 5
                 ) {
                     props.route.params.setTimeScoresRef("empty");
                 }
             }
 
-            console.log("beofe");
             let timeScoresFB = [];
             await firebase
                 .firestore()
@@ -364,10 +394,8 @@ export default function TimeGame(props) {
                 .catch(function (error) {
                     console.log("Error getting document:", error);
                 });
-            console.log("after");
-            console.log(timeScoresFB);
 
-            if (timeScoresFB.length < 200) {
+            if (timeScoresFB.length < 5) {
                 await firebase
                     .firestore()
                     .collection("highscores")
@@ -379,11 +407,7 @@ export default function TimeGame(props) {
                 const lowestUsernameAndScore = timeScoresFB.sort(
                     (a, b) => b[1] - a[1]
                 )[0];
-                console.log(
-                    lowestUsernameAndScore[0],
-                    lowestUsernameAndScore[1],
-                    score
-                );
+
                 if (score < lowestUsernameAndScore[1]) {
                     await firebase
                         .firestore()
@@ -436,8 +460,8 @@ export default function TimeGame(props) {
             setCurrentSpeedScoreRank:
                 props.route.params.setCurrentSpeedScoreRank,
             setCurrentTimeScoreRank: props.route.params.setCurrentTimeScoreRank,
-            pauseAndPlayRecording: props.route.params.pauseAndPlayRecording,
-            musicIsPlaying: musicStatus == "playing" ? true : false,
+            // pauseAndPlayRecording: props.route.params.pauseAndPlayRecording,
+            // musicIsPlaying: musicStatus == "playing" ? true : false,
         });
     };
 
@@ -460,13 +484,22 @@ export default function TimeGame(props) {
     };
 
     return (
-        <View style={styles.container}>
-            <MaterialIcons
-                name="close"
-                size={24}
-                style={styles.exitButton}
-                onPress={handleExitPress}
-            />
+        <View
+            style={
+                gameStatus == "playing" ? styles.container : styles.containerEnd
+            }
+        >
+            {gameStatus == "playing" ? (
+                <MaterialIcons
+                    name="close"
+                    size={24}
+                    style={styles.exitButton}
+                    onPress={handleExitPress}
+                />
+            ) : (
+                <Text></Text>
+            )}
+
             <TouchableOpacity
                 style={styles.musicButton}
                 onPress={async () => {
@@ -483,7 +516,15 @@ export default function TimeGame(props) {
                 ) : (
                     <Text></Text>
                 )}
-                <FontAwesomeIcon icon={faMusic} size={24} />
+                {musicStatus == "playing" ? (
+                    <FontAwesomeIcon icon={faMusic} size={24} />
+                ) : (
+                    <FontAwesomeIcon
+                        icon={faMusic}
+                        size={24}
+                        color={"#b5b5b5"}
+                    />
+                )}
             </TouchableOpacity>
             {confetti ? (
                 <ImageBackground
@@ -503,8 +544,20 @@ export default function TimeGame(props) {
                 <Text></Text>
             )}
 
-            <View style={styles.scoreBoard}>
-                <View style={styles.currentScoreContainer}>
+            <View
+                style={
+                    gameStatus == "playing"
+                        ? styles.scoreBoard
+                        : styles.scoreBoardEnd
+                }
+            >
+                <View
+                    style={
+                        gameStatus == "playing"
+                            ? styles.currentScoreContainer
+                            : styles.currentScoreContainerEnd
+                    }
+                >
                     <Text style={styles.textTitle}>Current</Text>
                     <Text style={styles.textCurrentScore}>
                         {gameStatus == "win" || gameStatus == "lose"
@@ -512,12 +565,26 @@ export default function TimeGame(props) {
                             : fancyTimeFormat(currentTime)}
                     </Text>
                 </View>
-                <View style={styles.bestScoreContainer}>
+                <View
+                    style={
+                        gameStatus == "playing"
+                            ? styles.bestScoreContainer
+                            : styles.bestScoreContainerEnd
+                    }
+                >
                     <Text style={styles.textTitle}>Best</Text>
                     <Text style={styles.textBestScore}>
                         {fancyTimeFormat(bestScore)}
                     </Text>
                 </View>
+                {gameStatus == "lose" ? (
+                    <View style={styles.cardsLeftLose}>
+                        <Text style={styles.cardsLeftText}>Cards</Text>
+                        <Text style={styles.cardsLeftNumText}>{cardsLeft}</Text>
+                    </View>
+                ) : (
+                    <Text></Text>
+                )}
             </View>
             {gameStatus == "playing" ? (
                 <FlatList
@@ -573,7 +640,6 @@ export default function TimeGame(props) {
 
                         <FlatButton
                             title="Leader Board"
-                            withVideo={true}
                             onPress={handleLeaderBoardPress}
                         />
                         <FlatButton
@@ -608,6 +674,11 @@ const styles = StyleSheet.create({
         paddingTop: 50,
         flex: 1,
     },
+    containerEnd: {
+        backgroundColor: "#FCFEEF",
+        paddingTop: 20,
+        flex: 1,
+    },
     musicButton: {
         position: "absolute",
         bottom: 60,
@@ -616,7 +687,7 @@ const styles = StyleSheet.create({
     },
     musicSlash: {
         transform: [{ translateY: 25 }],
-        zIndex: 20,
+        zIndex: 99,
     },
     ad: {
         position: "absolute",
@@ -659,6 +730,12 @@ const styles = StyleSheet.create({
         alignItems: "center",
         marginBottom: 10,
     },
+    scoreBoardEnd: {
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        marginBottom: 10,
+    },
     currentScoreContainer: {
         justifyContent: "center",
         alignItems: "center",
@@ -668,6 +745,15 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         width: 120,
+    },
+    currentScoreContainerEnd: {
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    bestScoreContainerEnd: {
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 40,
     },
     textTitle: {
         fontSize: 22,
@@ -740,7 +826,8 @@ const styles = StyleSheet.create({
     cardsLeftText: {
         fontFamily: "nunito-bold",
         fontSize: 22,
-        marginBottom: 10,
+        marginBottom: 8,
+        marginTop: 3,
     },
     cardsLeftNumText: {
         fontSize: 25,

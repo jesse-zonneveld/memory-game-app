@@ -5,6 +5,7 @@ import { Asset } from "expo-asset";
 import { AppNavigator } from "./routes/AppNavigator";
 import firebase from "./firebase/config";
 import { library } from "@fortawesome/fontawesome-svg-core";
+import * as Network from "expo-network";
 import {
     faLowVision,
     faBell,
@@ -878,24 +879,28 @@ export default function App() {
         faIcicles
     );
 
-    const firebaseAsync = () => {
-        const usersRef = firebase.firestore().collection("users");
-        firebase.auth().onAuthStateChanged((user) => {
-            if (user) {
-                usersRef
-                    .doc(user.uid)
-                    .get()
-                    .then((document) => {
-                        const userData = document.data();
-                        setUser(userData);
-                    })
-                    .catch((error) => {
-                        console.log(error);
-                    });
-            } else {
-                setNoUser(true);
-            }
-        });
+    const firebaseAsync = async () => {
+        if ((await Network.getNetworkStateAsync()).isConnected) {
+            const usersRef = firebase.firestore().collection("users");
+            firebase.auth().onAuthStateChanged((user) => {
+                if (user) {
+                    usersRef
+                        .doc(user.uid)
+                        .get()
+                        .then((document) => {
+                            const userData = document.data();
+                            setUser(userData);
+                        })
+                        .catch((error) => {
+                            console.log(error);
+                        });
+                } else {
+                    setNoUser(true);
+                }
+            });
+        } else {
+            setNoUser(true);
+        }
     };
 
     const _loadAssetsAsync = async () => {

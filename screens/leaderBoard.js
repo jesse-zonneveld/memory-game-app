@@ -9,13 +9,15 @@ import {
     Animated,
     TouchableWithoutFeedback,
     Easing,
+    Alert,
 } from "react-native";
 import firebase from "../firebase/config";
 import { AppLoading } from "expo";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import { AdMobInterstitial } from "expo-ads-admob";
+// import { AdMobInterstitial } from "expo-ads-admob";
 import { Audio } from "expo-av";
+import * as Network from "expo-network";
 
 export default function LeaderBoard(props) {
     const [highscores, setHighscores] = useState();
@@ -79,236 +81,264 @@ export default function LeaderBoard(props) {
 
     const firebaseQuery = async () => {
         console.log("inside fire query ===============================");
-        let normalScoresSnapShot = [];
-        let speedScoresSnapShot = [];
-        let timeScoresSnapShot = [];
+        const networkConnection = await (await Network.getNetworkStateAsync())
+            .isConnected;
 
-        let prevScore = 999999999;
-        let pos = 1;
-        let tiedIndex = 1;
+        if (networkConnection) {
+            let normalScoresSnapShot = [];
+            let speedScoresSnapShot = [];
+            let timeScoresSnapShot = [];
 
-        let normalScoresData = [];
-        let speedScoresData = [];
-        let timeScoresData = [];
+            let prevScore = 999999999;
+            let pos = 1;
+            let tiedIndex = 1;
 
-        if (props.route.params.loggedInUser) {
-            setCurrentNormalScore(
-                props.route.params.loggedInUser.highscore >
-                    props.route.params.currentNormalScore
-                    ? props.route.params.loggedInUser.highscore
-                    : props.route.params.currentNormalScore
-            );
-            setCurrentSpeedScore(
-                props.route.params.loggedInUser.speedScore >
-                    props.route.params.currentSpeedScore
-                    ? props.route.params.loggedInUser.speedScore
-                    : props.route.params.currentSpeedScore
-            );
-            setCurrentTimeScore(
-                props.route.params.loggedInUser.timeScore <
-                    props.route.params.currentTimeScore
-                    ? props.route.params.loggedInUser.timeScore
-                    : props.route.params.currentTimeScore
-            );
-        }
-        console.log("after user loggin~~~~~~~~~~~~~~~");
+            let normalScoresData = [];
+            let speedScoresData = [];
+            let timeScoresData = [];
 
-        if (props.route.params.getNormalScoresRef() == "empty") {
-            console.log(
-                "making normalScore query ==============================="
-            );
+            if (props.route.params.loggedInUser) {
+                setCurrentNormalScore(
+                    props.route.params.loggedInUser.highscore >
+                        props.route.params.currentNormalScore
+                        ? props.route.params.loggedInUser.highscore
+                        : props.route.params.currentNormalScore
+                );
+                setCurrentSpeedScore(
+                    props.route.params.loggedInUser.speedScore >
+                        props.route.params.currentSpeedScore
+                        ? props.route.params.loggedInUser.speedScore
+                        : props.route.params.currentSpeedScore
+                );
+                setCurrentTimeScore(
+                    props.route.params.loggedInUser.timeScore <
+                        props.route.params.currentTimeScore
+                        ? props.route.params.loggedInUser.timeScore
+                        : props.route.params.currentTimeScore
+                );
+            }
+            console.log("after user loggin~~~~~~~~~~~~~~~");
 
-            await firebase
-                .firestore()
-                .collection("highscores")
-                .doc("normal")
-                .get()
-                .then(function (doc) {
-                    if (doc.exists) {
-                        normalScoresSnapShot = Object.entries(doc.data()).sort(
-                            (a, b) => b[1] - a[1]
-                        );
+            if (props.route.params.getNormalScoresRef() == "empty") {
+                console.log(
+                    "making normalScore query ==============================="
+                );
+
+                await firebase
+                    .firestore()
+                    .collection("highscores")
+                    .doc("normal")
+                    .get()
+                    .then(function (doc) {
+                        if (doc.exists) {
+                            normalScoresSnapShot = Object.entries(
+                                doc.data()
+                            ).sort((a, b) => b[1] - a[1]);
+                        } else {
+                            // doc.data() will be undefined in this case
+                            console.log("No such document!");
+                        }
+                    })
+                    .catch(function (error) {
+                        console.log("Error getting document:", error);
+                    });
+
+                normalScoresData = normalScoresSnapShot.map((entry, i) => {
+                    const highscore = entry[1];
+                    let rank = 0;
+
+                    if (highscore < prevScore) {
+                        rank = pos;
+                        tiedIndex = rank;
+                        pos++;
                     } else {
-                        // doc.data() will be undefined in this case
-                        console.log("No such document!");
+                        rank = tiedIndex;
+                        if (pos == 1) pos = 2;
                     }
-                })
-                .catch(function (error) {
-                    console.log("Error getting document:", error);
+                    prevScore = highscore;
+
+                    if (props.route.params.loggedInUser) {
+                        if (
+                            props.route.params.loggedInUser.username == entry[0]
+                        ) {
+                            props.route.params.setCurrentNormalScoreRank(rank);
+                        }
+                    }
+                    return {
+                        pos: rank,
+                        username: entry[0],
+                        highscore: highscore,
+                    };
                 });
 
-            normalScoresData = normalScoresSnapShot.map((entry, i) => {
-                const highscore = entry[1];
-                let rank = 0;
+                props.route.params.setNormalScoresRef(normalScoresData);
+            }
 
-                if (highscore < prevScore) {
-                    rank = pos;
-                    tiedIndex = rank;
-                    pos++;
-                } else {
-                    rank = tiedIndex;
-                    if (pos == 1) pos = 2;
-                }
-                prevScore = highscore;
+            if (props.route.params.getSpeedScoresRef() == "empty") {
+                console.log(
+                    "making speedscore query ==============================="
+                );
 
-                if (props.route.params.loggedInUser) {
-                    if (props.route.params.loggedInUser.username == entry[0]) {
-                        props.route.params.setCurrentNormalScoreRank(rank);
-                    }
-                }
-                return {
-                    pos: rank,
-                    username: entry[0],
-                    highscore: highscore,
-                };
-            });
+                await firebase
+                    .firestore()
+                    .collection("highscores")
+                    .doc("speed")
+                    .get()
+                    .then(function (doc) {
+                        if (doc.exists) {
+                            speedScoresSnapShot = Object.entries(
+                                doc.data()
+                            ).sort((a, b) => b[1] - a[1]);
+                        } else {
+                            // doc.data() will be undefined in this case
+                            console.log("No such document!");
+                        }
+                    })
+                    .catch(function (error) {
+                        console.log("Error getting document:", error);
+                    });
 
-            props.route.params.setNormalScoresRef(normalScoresData);
-        }
+                prevScore = 999999999;
+                pos = 1;
+                tiedIndex = 1;
 
-        if (props.route.params.getSpeedScoresRef() == "empty") {
-            console.log(
-                "making speedscore query ==============================="
-            );
+                speedScoresData = speedScoresSnapShot.map((entry, i) => {
+                    const highscore = entry[1];
+                    let rank = 0;
 
-            await firebase
-                .firestore()
-                .collection("highscores")
-                .doc("speed")
-                .get()
-                .then(function (doc) {
-                    if (doc.exists) {
-                        speedScoresSnapShot = Object.entries(doc.data()).sort(
-                            (a, b) => b[1] - a[1]
-                        );
+                    if (highscore < prevScore) {
+                        rank = pos;
+                        tiedIndex = rank;
+                        pos++;
                     } else {
-                        // doc.data() will be undefined in this case
-                        console.log("No such document!");
+                        rank = tiedIndex;
+                        if (pos == 1) pos = 2;
                     }
-                })
-                .catch(function (error) {
-                    console.log("Error getting document:", error);
+                    prevScore = highscore;
+
+                    if (props.route.params.loggedInUser) {
+                        if (
+                            props.route.params.loggedInUser.username == entry[0]
+                        ) {
+                            props.route.params.setCurrentSpeedScoreRank(rank);
+                        }
+                    }
+                    return {
+                        pos: rank,
+                        username: entry[0],
+                        highscore: highscore,
+                    };
                 });
 
-            prevScore = 999999999;
-            pos = 1;
-            tiedIndex = 1;
+                props.route.params.setSpeedScoresRef(speedScoresData);
+            }
 
-            speedScoresData = speedScoresSnapShot.map((entry, i) => {
-                const highscore = entry[1];
-                let rank = 0;
+            if (props.route.params.getTimeScoresRef() == "empty") {
+                console.log(
+                    "making timescore query ==============================="
+                );
 
-                if (highscore < prevScore) {
-                    rank = pos;
-                    tiedIndex = rank;
-                    pos++;
-                } else {
-                    rank = tiedIndex;
-                    if (pos == 1) pos = 2;
-                }
-                prevScore = highscore;
+                await firebase
+                    .firestore()
+                    .collection("highscores")
+                    .doc("time")
+                    .get()
+                    .then(function (doc) {
+                        if (doc.exists) {
+                            timeScoresSnapShot = Object.entries(
+                                doc.data()
+                            ).sort((a, b) => a[1] - b[1]);
+                        } else {
+                            // doc.data() will be undefined in this case
+                            console.log("No such document!");
+                        }
+                    })
+                    .catch(function (error) {
+                        console.log("Error getting document:", error);
+                    });
 
-                if (props.route.params.loggedInUser) {
-                    if (props.route.params.loggedInUser.username == entry[0]) {
-                        props.route.params.setCurrentSpeedScoreRank(rank);
-                    }
-                }
-                return {
-                    pos: rank,
-                    username: entry[0],
-                    highscore: highscore,
-                };
-            });
+                prevScore = 0;
+                pos = 1;
+                tiedIndex = 1;
 
-            props.route.params.setSpeedScoresRef(speedScoresData);
-        }
+                timeScoresData = timeScoresSnapShot.map((entry, i) => {
+                    const highscore = entry[1];
+                    let rank = 0;
 
-        if (props.route.params.getTimeScoresRef() == "empty") {
-            console.log(
-                "making timescore query ==============================="
-            );
-
-            await firebase
-                .firestore()
-                .collection("highscores")
-                .doc("time")
-                .get()
-                .then(function (doc) {
-                    if (doc.exists) {
-                        timeScoresSnapShot = Object.entries(doc.data()).sort(
-                            (a, b) => a[1] - b[1]
-                        );
+                    if (highscore > prevScore) {
+                        rank = pos;
+                        tiedIndex = rank;
+                        pos++;
                     } else {
-                        // doc.data() will be undefined in this case
-                        console.log("No such document!");
+                        rank = tiedIndex;
+                        if (pos == 1) pos = 2;
                     }
-                })
-                .catch(function (error) {
-                    console.log("Error getting document:", error);
+                    prevScore = highscore;
+
+                    if (props.route.params.loggedInUser) {
+                        if (
+                            props.route.params.loggedInUser.username == entry[0]
+                        ) {
+                            props.route.params.setCurrentTimeScoreRank(rank);
+                        }
+                    }
+                    return {
+                        pos: rank,
+                        username: entry[0],
+                        highscore: highscore,
+                    };
                 });
 
-            prevScore = 0;
-            pos = 1;
-            tiedIndex = 1;
+                props.route.params.setTimeScoresRef(timeScoresData);
+            }
 
-            timeScoresData = timeScoresSnapShot.map((entry, i) => {
-                const highscore = entry[1];
-                let rank = 0;
-
-                if (highscore > prevScore) {
-                    rank = pos;
-                    tiedIndex = rank;
-                    pos++;
-                } else {
-                    rank = tiedIndex;
-                    if (pos == 1) pos = 2;
-                }
-                prevScore = highscore;
-
-                if (props.route.params.loggedInUser) {
-                    if (props.route.params.loggedInUser.username == entry[0]) {
-                        props.route.params.setCurrentTimeScoreRank(rank);
-                    }
-                }
-                return {
-                    pos: rank,
-                    username: entry[0],
-                    highscore: highscore,
-                };
-            });
-
-            props.route.params.setTimeScoresRef(timeScoresData);
+            console.log("end of query");
+            setHighscores(props.route.params.getNormalScoresRef());
+        } else {
+            handleNoConnection();
         }
+    };
 
-        console.log("end of query");
-        setHighscores(props.route.params.getNormalScoresRef());
+    const handleNoConnection = () => {
+        Alert.alert(
+            "Oops! No internet connection found",
+            "",
+            [
+                {
+                    text: "Back to Menu",
+                    onPress: () => props.navigation.navigate("Home"),
+                    style: "cancel",
+                },
+            ],
+            { cancelable: false }
+        );
     };
 
     useLayoutEffect(() => {
-        AdMobInterstitial.addEventListener("interstitialDidLoad", () => {
-            console.log("videoloaded");
-            if (props.route.params.musicIsPlaying) {
-                props.route.params.pauseAndPlayRecording(true);
-            }
-        });
-        AdMobInterstitial.addEventListener("interstitialDidFailToLoad", () =>
-            console.log("failedtoload")
-        );
-        AdMobInterstitial.addEventListener("interstitialDidOpen", () =>
-            console.log("opened")
-        );
-        AdMobInterstitial.addEventListener(
-            "interstitialWillLeaveApplication",
-            () => console.log("leaveapp")
-        );
-        AdMobInterstitial.addEventListener("interstitialDidClose", () => {
-            console.log("close");
-            if (props.route.params.musicIsPlaying) {
-                props.route.params.pauseAndPlayRecording(true);
-            }
-            AdMobInterstitial.removeAllListeners();
-        });
-        showVideoAd();
+        // AdMobInterstitial.addEventListener("interstitialDidLoad", () => {
+        //     console.log("videoloaded");
+        //     if (props.route.params.musicIsPlaying) {
+        //         props.route.params.pauseAndPlayRecording(true);
+        //     }
+        // });
+        // AdMobInterstitial.addEventListener("interstitialDidFailToLoad", () =>
+        //     console.log("failedtoload")
+        // );
+        // AdMobInterstitial.addEventListener("interstitialDidOpen", () =>
+        //     console.log("opened")
+        // );
+        // AdMobInterstitial.addEventListener(
+        //     "interstitialWillLeaveApplication",
+        //     () => console.log("leaveapp")
+        // );
+        // AdMobInterstitial.addEventListener("interstitialDidClose", () => {
+        //     console.log("close");
+        //     if (props.route.params.musicIsPlaying) {
+        //         props.route.params.pauseAndPlayRecording(true);
+        //     }
+        //     AdMobInterstitial.removeAllListeners();
+        // });
+        // showVideoAd();
         firebaseQuery();
     }, []);
 
@@ -330,13 +360,13 @@ export default function LeaderBoard(props) {
         return ret;
     };
 
-    const showVideoAd = async () => {
-        await AdMobInterstitial.setAdUnitID(
-            "ca-app-pub-3940256099942544/5135589807" // test
-        );
-        await AdMobInterstitial.requestAdAsync({ servePersonalizedAds: true });
-        await AdMobInterstitial.showAdAsync();
-    };
+    // const showVideoAd = async () => {
+    //     await AdMobInterstitial.setAdUnitID(
+    //         "ca-app-pub-3940256099942544/5135589807" // test
+    //     );
+    //     await AdMobInterstitial.requestAdAsync({ servePersonalizedAds: true });
+    //     await AdMobInterstitial.showAdAsync();
+    // };
 
     if (highscores) {
         return (
@@ -672,6 +702,8 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
     row: {
+        borderRadius: 10,
+
         flexDirection: "row",
         height: 40,
         alignItems: "center",
@@ -708,6 +740,8 @@ const styles = StyleSheet.create({
         // borderRightWidth: 2,
     },
     scoreTextContainer: {
+        borderBottomRightRadius: 10,
+        borderTopRightRadius: 10,
         flex: 1,
         height: "100%",
         alignItems: "center",
@@ -715,6 +749,8 @@ const styles = StyleSheet.create({
         backgroundColor: "#5DCAF6",
     },
     currentScoreTextContainer: {
+        borderBottomRightRadius: 10,
+        borderTopRightRadius: 10,
         flex: 1,
         height: "100%",
         alignItems: "center",
@@ -726,13 +762,12 @@ const styles = StyleSheet.create({
         fontFamily: "nunito-regular",
     },
     bottomRow: {
+        borderRadius: 10,
         flexDirection: "row",
         textAlign: "center",
         height: 40,
         alignItems: "center",
         justifyContent: "center",
-        // borderBottomColor: "black",
-        // borderBottomWidth: 2,
         width: "100%",
         backgroundColor: "#FCCFE1",
         marginTop: 5,

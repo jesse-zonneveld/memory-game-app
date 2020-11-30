@@ -4,11 +4,11 @@
         "slug": "02-memory-game",
         "version": "1.0.0",
         "orientation": "portrait",
-        "icon": "./assets/icon.png",
+        "icon": "./assets/images/icon.png",
         "splash": {
-            "image": "./assets/images/moose.png",
+            "image": "./assets/images/HM_logo.png",
             "resizeMode": "contain",
-            "backgroundColor": "#ffffff"
+            "backgroundColor": "#778990"
         },
         "updates": {
             "fallbackToCacheTimeout": 0

@@ -1,5 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View, TouchableOpacity, Image } from "react-native";
+import {
+    StyleSheet,
+    Text,
+    View,
+    TouchableOpacity,
+    Image,
+    Alert,
+} from "react-native";
 import FlatButtonBig from "../shared/flatButtonBig";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
@@ -8,19 +15,15 @@ import { faSlash } from "@fortawesome/free-solid-svg-icons";
 import ScrollingBackground from "react-native-scrolling-images";
 import { Audio } from "expo-av";
 import { AdMobBanner, AdMobInterstitial } from "expo-ads-admob";
+import * as Network from "expo-network";
 
 export default function GameModes(props) {
     const selectedGameMode = useRef();
     const [musicStatus, setMusicStatus] = useState(
         props.route.params.musicStatusRef
     );
-    console.log(musicStatus);
     useEffect(() => {
-        console.log(musicStatus);
         AdMobInterstitial.addEventListener("interstitialDidLoad", () => {
-            console.log("videoloaded");
-            console.log(musicStatus);
-            console.log(getMusicStatus());
             if (getMusicStatus() == "playing") {
                 props.route.params.pauseAndPlayRecording(true);
             }
@@ -193,13 +196,20 @@ export default function GameModes(props) {
         });
     };
 
-    const handleGamePress = () => {
+    const handleGamePress = async () => {
         soundPress();
+        const networkConnection = await (await Network.getNetworkStateAsync())
+            .isConnected;
+
         if (
             props.route.params.getGamesPlayed() % 5 == 0 &&
             props.route.params.getGamesPlayed() != 0
         ) {
-            showVideoAd();
+            if (networkConnection) {
+                showVideoAd();
+            } else {
+                handleNoConnection();
+            }
         } else {
             if (selectedGameMode.current == "normal") {
                 startNormalGame();
@@ -213,16 +223,29 @@ export default function GameModes(props) {
 
     const switchMusicStatus = () => {
         if (musicStatus == "playing") {
-            console.log("music status switch to pasues");
             setMusicStatus("paused");
         } else {
-            console.log("music status switch to playing");
             setMusicStatus("playing");
         }
     };
 
     const getMusicStatus = () => {
         return musicStatus;
+    };
+
+    const handleNoConnection = () => {
+        Alert.alert(
+            "Oops! No internet connection found",
+            "",
+            [
+                {
+                    text: "Back to Menu",
+                    onPress: () => props.navigation.navigate("Home"),
+                    style: "cancel",
+                },
+            ],
+            { cancelable: false }
+        );
     };
 
     return (
@@ -249,7 +272,15 @@ export default function GameModes(props) {
                 ) : (
                     <Text></Text>
                 )}
-                <FontAwesomeIcon icon={faMusic} size={24} />
+                {musicStatus == "playing" ? (
+                    <FontAwesomeIcon icon={faMusic} size={24} />
+                ) : (
+                    <FontAwesomeIcon
+                        icon={faMusic}
+                        size={24}
+                        color={"#b5b5b5"}
+                    />
+                )}
             </TouchableOpacity>
             <TouchableOpacity
                 style={styles.backButton}
@@ -311,6 +342,7 @@ const styles = StyleSheet.create({
         right: 10,
     },
     musicSlash: {
+        zIndex: 99,
         transform: [{ translateY: 25 }],
     },
     ad: {

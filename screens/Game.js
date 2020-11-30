@@ -18,6 +18,7 @@ import { Audio } from "expo-av";
 import { AdMobBanner, AdMobInterstitial } from "expo-ads-admob";
 import { faMusic } from "@fortawesome/free-solid-svg-icons";
 import { faSlash } from "@fortawesome/free-solid-svg-icons";
+import * as Network from "expo-network";
 
 export default function Game(props) {
     const playingDeck = useRef(
@@ -300,40 +301,68 @@ export default function Game(props) {
         );
     };
 
-    const checkForAd = () => {
+    const checkForAd = async () => {
+        const networkConnection = (await Network.getNetworkStateAsync())
+            .isConnected;
+
         if (
             props.route.params.getGamesPlayed() % 5 == 0 &&
             props.route.params.getGamesPlayed() != 0
         ) {
-            AdMobInterstitial.addEventListener("interstitialDidLoad", () => {
-                console.log("videoloaded");
-                if (musicStatus == "playing") {
-                    props.route.params.pauseAndPlayRecording(true);
-                }
-            });
-            AdMobInterstitial.addEventListener(
-                "interstitialDidFailToLoad",
-                () => console.log("failedtoload")
-            );
-            AdMobInterstitial.addEventListener("interstitialDidOpen", () =>
-                console.log("opened")
-            );
-            AdMobInterstitial.addEventListener(
-                "interstitialWillLeaveApplication",
-                () => console.log("leaveapp")
-            );
-            AdMobInterstitial.addEventListener("interstitialDidClose", () => {
-                if (musicStatus == "playing") {
-                    props.route.params.pauseAndPlayRecording(true);
-                }
-                restartGame();
-                removeListenersForAd();
-                props.route.params.increaseGamesPlayed();
-            });
-            showVideoAd();
+            if (networkConnection) {
+                AdMobInterstitial.addEventListener(
+                    "interstitialDidLoad",
+                    () => {
+                        console.log("videoloaded");
+                        if (musicStatus == "playing") {
+                            props.route.params.pauseAndPlayRecording(true);
+                        }
+                    }
+                );
+                AdMobInterstitial.addEventListener(
+                    "interstitialDidFailToLoad",
+                    () => console.log("failedtoload")
+                );
+                AdMobInterstitial.addEventListener("interstitialDidOpen", () =>
+                    console.log("opened")
+                );
+                AdMobInterstitial.addEventListener(
+                    "interstitialWillLeaveApplication",
+                    () => console.log("leaveapp")
+                );
+                AdMobInterstitial.addEventListener(
+                    "interstitialDidClose",
+                    () => {
+                        if (musicStatus == "playing") {
+                            props.route.params.pauseAndPlayRecording(true);
+                        }
+                        restartGame();
+                        removeListenersForAd();
+                        props.route.params.increaseGamesPlayed();
+                    }
+                );
+                showVideoAd();
+            } else {
+                handleNoConnection();
+            }
         } else {
             restartGame();
         }
+    };
+
+    const handleNoConnection = () => {
+        Alert.alert(
+            "Oops! No internet connection found",
+            "",
+            [
+                {
+                    text: "Back to Menu",
+                    onPress: () => props.navigation.navigate("Home"),
+                    style: "cancel",
+                },
+            ],
+            { cancelable: false }
+        );
     };
 
     const showVideoAd = async () => {
@@ -394,12 +423,12 @@ export default function Game(props) {
                     if (
                         props.route.params.getNormalScoresRef()[
                             props.route.params.getNormalScoresRef().length - 1
-                        ].highscore < score
+                        ].highscore < score ||
+                        props.route.params.getNormalScoresRef().length < 12
                     ) {
                         props.route.params.setNormalScoresRef("empty");
                     }
                 }
-                console.log("beofe");
                 let normalScoresFB = [];
                 await firebase
                     .firestore()
@@ -410,17 +439,14 @@ export default function Game(props) {
                         if (doc.exists) {
                             normalScoresFB = Object.entries(doc.data());
                         } else {
-                            // doc.data() will be undefined in this case
                             console.log("No such document!");
                         }
                     })
                     .catch(function (error) {
                         console.log("Error getting document:", error);
                     });
-                console.log("after");
-                console.log(normalScoresFB);
 
-                if (normalScoresFB.length < 200) {
+                if (normalScoresFB.length < 12) {
                     await firebase
                         .firestore()
                         .collection("highscores")
@@ -432,11 +458,7 @@ export default function Game(props) {
                     const lowestUsernameAndScore = normalScoresFB.sort(
                         (a, b) => a[1] - b[1]
                     )[0];
-                    console.log(
-                        lowestUsernameAndScore[0],
-                        lowestUsernameAndScore[1],
-                        score
-                    );
+
                     if (score > lowestUsernameAndScore[1]) {
                         await firebase
                             .firestore()
@@ -469,7 +491,8 @@ export default function Game(props) {
                     if (
                         props.route.params.getSpeedScoresRef()[
                             props.route.params.getSpeedScoresRef().length - 1
-                        ].highscore < score
+                        ].highscore < score ||
+                        props.route.params.getSpeedScoresRef().length < 5
                     ) {
                         props.route.params.setSpeedScoresRef("empty");
                     }
@@ -492,9 +515,6 @@ export default function Game(props) {
                     .catch(function (error) {
                         console.log("Error getting document:", error);
                     });
-                console.log("after");
-                console.log(normalScoresFB);
-
                 if (normalScoresFB.length < 5) {
                     await firebase
                         .firestore()
@@ -507,11 +527,6 @@ export default function Game(props) {
                     const lowestUsernameAndScore = normalScoresFB.sort(
                         (a, b) => a[1] - b[1]
                     )[0];
-                    console.log(
-                        lowestUsernameAndScore[0],
-                        lowestUsernameAndScore[1],
-                        score
-                    );
                     if (score > lowestUsernameAndScore[1]) {
                         await firebase
                             .firestore()
@@ -568,8 +583,8 @@ export default function Game(props) {
                     props.route.params.setCurrentSpeedScoreRank,
                 setCurrentTimeScoreRank:
                     props.route.params.setCurrentTimeScoreRank,
-                pauseAndPlayRecording: props.route.params.pauseAndPlayRecording,
-                musicIsPlaying: musicStatus == "playing" ? true : false,
+                // pauseAndPlayRecording: props.route.params.pauseAndPlayRecording,
+                // musicIsPlaying: musicStatus == "playing" ? true : false,
             });
         } else if (props.route.params.gameMode == "speed") {
             props.navigation.navigate("LeaderBoard", {
@@ -595,20 +610,28 @@ export default function Game(props) {
                     props.route.params.setCurrentSpeedScoreRank,
                 setCurrentTimeScoreRank:
                     props.route.params.setCurrentTimeScoreRank,
-                pauseAndPlayRecording: props.route.params.pauseAndPlayRecording,
-                musicIsPlaying: musicStatus == "playing" ? true : false,
+                // pauseAndPlayRecording: props.route.params.pauseAndPlayRecording,
+                // musicIsPlaying: musicStatus == "playing" ? true : false,
             });
         }
     };
 
     return (
-        <View style={styles.container}>
-            <MaterialIcons
-                name="close"
-                size={24}
-                style={styles.exitButton}
-                onPress={handleExitPress}
-            />
+        <View
+            style={
+                gameStatus == "playing" ? styles.container : styles.containerEnd
+            }
+        >
+            {gameStatus == "playing" ? (
+                <MaterialIcons
+                    name="close"
+                    size={24}
+                    style={styles.exitButton}
+                    onPress={handleExitPress}
+                />
+            ) : (
+                <Text></Text>
+            )}
             <TouchableOpacity
                 style={styles.musicButton}
                 onPress={async () => {
@@ -625,7 +648,15 @@ export default function Game(props) {
                 ) : (
                     <Text></Text>
                 )}
-                <FontAwesomeIcon icon={faMusic} size={24} />
+                {musicStatus == "playing" ? (
+                    <FontAwesomeIcon icon={faMusic} size={24} />
+                ) : (
+                    <FontAwesomeIcon
+                        icon={faMusic}
+                        size={24}
+                        color={"#b5b5b5"}
+                    />
+                )}
             </TouchableOpacity>
             {confetti ? (
                 <ImageBackground
@@ -714,7 +745,6 @@ export default function Game(props) {
                         )}
                         <FlatButton
                             title="Leader Board"
-                            withVideo={true}
                             onPress={handleLeaderBoardPress}
                         />
                         <FlatButton
@@ -759,6 +789,11 @@ const styles = StyleSheet.create({
         paddingTop: 50,
         flex: 1,
     },
+    containerEnd: {
+        backgroundColor: "#FCFEEF",
+        paddingTop: 36,
+        flex: 1,
+    },
     musicButton: {
         position: "absolute",
         bottom: 60,
@@ -767,7 +802,7 @@ const styles = StyleSheet.create({
     },
     musicSlash: {
         transform: [{ translateY: 25 }],
-        zIndex: 20,
+        zIndex: 99,
     },
     ad: {
         position: "absolute",
@@ -841,6 +876,7 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     card: {
+        borderRadius: 10,
         backgroundColor: "#1EF1E3",
         flex: 1,
         justifyContent: "center",

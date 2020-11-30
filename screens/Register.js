@@ -90,7 +90,6 @@ const profanity = [
     "whore",
     "wtf",
 ];
-console.log(cachedSnapshot, "---------");
 const reviewSchema = yup.object({
     email: yup.string().email().required(),
     password: yup.string().required().min(6),
@@ -106,6 +105,23 @@ const reviewSchema = yup.object({
                 return false;
             }
         })
+        .test(
+            "special_char_check",
+            "Invalid character '~', '*', '/', '[', or ']'.",
+            (val) => {
+                try {
+                    return (
+                        !val.includes("~") &&
+                        !val.includes("*") &&
+                        !val.includes("/") &&
+                        !val.includes("[") &&
+                        !val.includes("]")
+                    );
+                } catch (err) {
+                    return false;
+                }
+            }
+        )
         .test("profanity_check", "Inappropriate word used.", (val) => {
             try {
                 if (val.length > 2) {
@@ -117,6 +133,7 @@ const reviewSchema = yup.object({
                 return false;
             }
         })
+
         .test("unique_username", "Username already taken.", async (val) => {
             if (cachedSnapshot == "empty") {
                 console.log("request made");

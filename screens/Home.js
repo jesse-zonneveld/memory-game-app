@@ -1,6 +1,7 @@
 import React, { useRef, useState, useLayoutEffect, useEffect } from "react";
 import firebase from "../firebase/config";
 import ScrollingBackground from "react-native-scrolling-images";
+import { StatusBar } from "expo-status-bar";
 
 import {
     StyleSheet,
@@ -11,6 +12,7 @@ import {
     Keyboard,
     Image,
     TouchableOpacity,
+    Alert,
 } from "react-native";
 import FlatButton from "../shared/flatButton";
 import LoginForm from "./Login";
@@ -22,6 +24,7 @@ import { AsyncStorage } from "react-native";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faMusic } from "@fortawesome/free-solid-svg-icons";
 import { faSlash } from "@fortawesome/free-solid-svg-icons";
+import * as Network from "expo-network";
 
 export default function Home(props) {
     const [modalStatus, setModalStatus] = useState("closed");
@@ -45,19 +48,24 @@ export default function Home(props) {
     }, []);
 
     useLayoutEffect(() => {
-        if (loggedInUser) {
-            setCurrentNormalScore(loggedInUser.highscore);
-            setCurrentSpeedScore(loggedInUser.speedScore);
-            setCurrentTimeScore(loggedInUser.timeScore);
-            retrieveData("normalScore");
-            retrieveData("speedScore");
-            retrieveData("timeScore");
-        } else {
-            retrieveData("normalScore");
-            retrieveData("speedScore");
-            retrieveData("timeScore");
-            setTimeout(() => setModalStatus("reg"), 1500);
-        }
+        const checkUser = async () => {
+            if (loggedInUser) {
+                setCurrentNormalScore(loggedInUser.highscore);
+                setCurrentSpeedScore(loggedInUser.speedScore);
+                setCurrentTimeScore(loggedInUser.timeScore);
+                retrieveData("normalScore");
+                retrieveData("speedScore");
+                retrieveData("timeScore");
+            } else {
+                retrieveData("normalScore");
+                retrieveData("speedScore");
+                retrieveData("timeScore");
+                if ((await Network.getNetworkStateAsync()).isConnected) {
+                    setTimeout(() => setModalStatus("reg"), 1500);
+                }
+            }
+        };
+        checkUser();
     }, [loggedInUser]);
 
     const storeData = async (key, value) => {
@@ -77,7 +85,7 @@ export default function Home(props) {
                     if (key == "normalScore") {
                         if (+value > loggedInUser.highscore) {
                             setCurrentNormalScore(+value);
-                            return firebase
+                            await firebase
                                 .firestore()
                                 .collection("users")
                                 .doc(loggedInUser.id)
@@ -96,12 +104,59 @@ export default function Home(props) {
                                         error
                                     );
                                 });
+
+                            let normalScoresFB = [];
+                            await firebase
+                                .firestore()
+                                .collection("highscores")
+                                .doc("normal")
+                                .get()
+                                .then(function (doc) {
+                                    if (doc.exists) {
+                                        normalScoresFB = Object.entries(
+                                            doc.data()
+                                        );
+                                    } else {
+                                        console.log("No such document!");
+                                    }
+                                })
+                                .catch(function (error) {
+                                    console.log(
+                                        "Error getting document:",
+                                        error
+                                    );
+                                });
+
+                            if (normalScoresFB.length < 12) {
+                                await firebase
+                                    .firestore()
+                                    .collection("highscores")
+                                    .doc("normal")
+                                    .update({
+                                        [loggedInUser.username]: +value,
+                                    });
+                            } else {
+                                const lowestUsernameAndScore = normalScoresFB.sort(
+                                    (a, b) => a[1] - b[1]
+                                )[0];
+
+                                if (+value > lowestUsernameAndScore[1]) {
+                                    await firebase
+                                        .firestore()
+                                        .collection("highscores")
+                                        .doc("normal")
+                                        .update({
+                                            [lowestUsernameAndScore[0]]: firebase.firestore.FieldValue.delete(),
+                                            [loggedInUser.username]: +value,
+                                        });
+                                }
+                            }
                         }
                     } else if (key == "speedScore") {
                         if (+value > loggedInUser.speedScore) {
                             setCurrentSpeedScore(+value);
 
-                            return firebase
+                            await firebase
                                 .firestore()
                                 .collection("users")
                                 .doc(loggedInUser.id)
@@ -120,12 +175,59 @@ export default function Home(props) {
                                         error
                                     );
                                 });
+
+                            let speedScoresFB = [];
+                            await firebase
+                                .firestore()
+                                .collection("highscores")
+                                .doc("speed")
+                                .get()
+                                .then(function (doc) {
+                                    if (doc.exists) {
+                                        speedScoresFB = Object.entries(
+                                            doc.data()
+                                        );
+                                    } else {
+                                        console.log("No such document!");
+                                    }
+                                })
+                                .catch(function (error) {
+                                    console.log(
+                                        "Error getting document:",
+                                        error
+                                    );
+                                });
+
+                            if (speedScoresFB.length < 12) {
+                                await firebase
+                                    .firestore()
+                                    .collection("highscores")
+                                    .doc("speed")
+                                    .update({
+                                        [loggedInUser.username]: +value,
+                                    });
+                            } else {
+                                const lowestUsernameAndScore = speedScoresFB.sort(
+                                    (a, b) => a[1] - b[1]
+                                )[0];
+
+                                if (+value > lowestUsernameAndScore[1]) {
+                                    await firebase
+                                        .firestore()
+                                        .collection("highscores")
+                                        .doc("speed")
+                                        .update({
+                                            [lowestUsernameAndScore[0]]: firebase.firestore.FieldValue.delete(),
+                                            [loggedInUser.username]: +value,
+                                        });
+                                }
+                            }
                         }
                     } else if (key == "timeScore") {
                         if (+value > loggedInUser.timeScore) {
                             setCurrentTimeScore(+value);
 
-                            return firebase
+                            await firebase
                                 .firestore()
                                 .collection("users")
                                 .doc(loggedInUser.id)
@@ -144,6 +246,53 @@ export default function Home(props) {
                                         error
                                     );
                                 });
+
+                            let timeScoresFB = [];
+                            await firebase
+                                .firestore()
+                                .collection("highscores")
+                                .doc("time")
+                                .get()
+                                .then(function (doc) {
+                                    if (doc.exists) {
+                                        timeScoresFB = Object.entries(
+                                            doc.data()
+                                        );
+                                    } else {
+                                        console.log("No such document!");
+                                    }
+                                })
+                                .catch(function (error) {
+                                    console.log(
+                                        "Error getting document:",
+                                        error
+                                    );
+                                });
+
+                            if (timeScoresFB.length < 12) {
+                                await firebase
+                                    .firestore()
+                                    .collection("highscores")
+                                    .doc("time")
+                                    .update({
+                                        [loggedInUser.username]: +value,
+                                    });
+                            } else {
+                                const lowestUsernameAndScore = timeScoresFB.sort(
+                                    (a, b) => b[1] - a[1]
+                                )[0];
+
+                                if (+value < lowestUsernameAndScore[1]) {
+                                    await firebase
+                                        .firestore()
+                                        .collection("highscores")
+                                        .doc("time")
+                                        .update({
+                                            [lowestUsernameAndScore[0]]: firebase.firestore.FieldValue.delete(),
+                                            [loggedInUser.username]: +value,
+                                        });
+                                }
+                            }
                         }
                     }
                 } else {
@@ -210,15 +359,11 @@ export default function Home(props) {
         }
         if (music.current) {
             if (status == "playing") {
-                console.log("pausing...");
                 await music.current.pauseAsync();
-                console.log("paused!");
                 setMusicStatus("donePause");
                 musicStatusRef.current = "donePause";
             } else {
-                console.log("playing...");
                 await music.current.playAsync();
-                console.log("playing!");
 
                 setMusicStatus("playing");
                 musicStatusRef.current = "playing";
@@ -276,8 +421,8 @@ export default function Home(props) {
             setCurrentNormalScoreRank,
             setCurrentSpeedScoreRank,
             setCurrentTimeScoreRank,
-            pauseAndPlayRecording,
-            musicIsPlaying: musicStatus == "playing" ? true : false,
+            // pauseAndPlayRecording,
+            // musicIsPlaying: musicStatus == "playing" ? true : false,
         });
     };
 
@@ -398,6 +543,39 @@ export default function Home(props) {
         return ret;
     };
 
+    const handleRegisterPress = async () => {
+        soundPress();
+        if ((await Network.getNetworkStateAsync()).isConnected) {
+            setModalStatus("reg");
+        } else {
+            handleNoConnection();
+        }
+    };
+
+    const handleLoginPress = async () => {
+        soundPress();
+        if ((await Network.getNetworkStateAsync()).isConnected) {
+            setModalStatus("login");
+        } else {
+            handleNoConnection();
+        }
+    };
+
+    const handleNoConnection = () => {
+        Alert.alert(
+            "Oops! No internet connection found",
+            "",
+            [
+                {
+                    text: "Dismiss",
+                    onPress: () => console.log("dismissed"),
+                    style: "cancel",
+                },
+            ],
+            { cancelable: false }
+        );
+    };
+
     return (
         <View style={styles.container}>
             <ScrollingBackground
@@ -416,7 +594,15 @@ export default function Home(props) {
                 ) : (
                     <Text></Text>
                 )}
-                <FontAwesomeIcon icon={faMusic} size={24} />
+                {musicStatus == "playing" ? (
+                    <FontAwesomeIcon icon={faMusic} size={24} />
+                ) : (
+                    <FontAwesomeIcon
+                        icon={faMusic}
+                        size={24}
+                        color={"#b5b5b5"}
+                    />
+                )}
             </TouchableOpacity>
             <Image
                 source={require("../assets/images/bannerBlue.png")}
@@ -468,7 +654,6 @@ export default function Home(props) {
                 />
                 <FlatButton
                     title={"Leader Board"}
-                    withVideo={true}
                     onPress={handleLeaderBoardPress}
                 />
                 {loggedInUser ? (
@@ -477,18 +662,9 @@ export default function Home(props) {
                     <View>
                         <FlatButton
                             title="Register Account"
-                            onPress={() => {
-                                soundPress();
-                                setModalStatus("reg");
-                            }}
+                            onPress={handleRegisterPress}
                         />
-                        <FlatButton
-                            title="Login"
-                            onPress={() => {
-                                soundPress();
-                                setModalStatus("login");
-                            }}
-                        />
+                        <FlatButton title="Login" onPress={handleLoginPress} />
                     </View>
                 )}
             </View>
@@ -505,7 +681,7 @@ export default function Home(props) {
                         <Text style={styles.modalTitle}>Create Account</Text>
 
                         <RegisterForm
-                            closeModal={() => setModalStatus("closed")}
+                            closeModal={() => setModalStatus("close")}
                             switchModal={() => setModalStatus("login")}
                             setLoggedInUser={(user) => setLoggedInUser(user)}
                         />
@@ -524,6 +700,7 @@ export default function Home(props) {
                     </View>
                 </TouchableWithoutFeedback>
             </Modal>
+            {/* <StatusBar hidden={true} /> */}
         </View>
     );
 }
@@ -536,6 +713,7 @@ const styles = StyleSheet.create({
     },
     musicSlash: {
         transform: [{ translateY: 25 }],
+        zIndex: 99,
     },
     container: {
         flex: 1,
@@ -586,6 +764,7 @@ const styles = StyleSheet.create({
     },
     usernameContainer: {
         borderWidth: 2,
+        borderRadius: 10,
         borderColor: "black",
         position: "absolute",
         top: 180,
