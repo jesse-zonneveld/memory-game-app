@@ -111,6 +111,8 @@ export default function LoginForm(props) {
 const styles = StyleSheet.create({
     container: {
         width: "100%",
+        justifyContent: "center",
+        alignItems: "center",
     },
     exitButton: {
         position: "absolute",
@@ -121,6 +123,8 @@ const styles = StyleSheet.create({
     form: {
         marginTop: 200,
         paddingHorizontal: 20,
+        width: "100%",
+        maxWidth: 500,
     },
     input: {
         borderWidth: 1,

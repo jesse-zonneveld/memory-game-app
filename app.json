@@ -1,8 +1,9 @@
 {
     "expo": {
-        "name": "02-memory-game",
-        "slug": "02-memory-game",
-        "version": "1.0.0",
+        "name": "Memory Press",
+        "slug": "memory-press",
+        "version": "1.0.1",
+        "privacy": "unlisted",
         "orientation": "portrait",
         "icon": "./assets/images/icon.png",
         "splash": {
@@ -15,6 +16,8 @@
         },
         "assetBundlePatterns": ["**/*"],
         "ios": {
+            "bundleIdentifier": "com.howlingmoose.memorypress",
+            "buildNumber": "1.0.0",
             "supportsTablet": true,
             "config": {
                 "googleMobileAdsAppId": "ca-app-pub-4308697206344728~6217278629"

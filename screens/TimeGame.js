@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { FlatList } from "react-native-gesture-handler";
 import FlatButton from "../shared/flatButton";
+import SmallFlatButton from "../shared/smallFlatButton";
 import { Dimensions } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import firebase from "../firebase/config";
@@ -44,6 +45,8 @@ export default function TimeGame(props) {
     const [musicStatus, setMusicStatus] = useState(
         props.route.params.musicStatus
     );
+    const isLargeDevice = useRef(Dimensions.get("window").width > 600);
+    const isSmallDevice = useRef(Dimensions.get("window").width < 350);
 
     useLayoutEffect(() => {
         if (stopTimer.current == false) {
@@ -142,6 +145,7 @@ export default function TimeGame(props) {
                 require("../assets/sounds/win.wav"),
                 { shouldPlay: true }
             );
+            await soundObject.setVolumeAsync(0.3);
             await soundObject.playAsync();
             if (musicStatus == "playing") {
                 await setTimeout(
@@ -259,7 +263,7 @@ export default function TimeGame(props) {
             .isConnected;
 
         if (
-            props.route.params.getGamesPlayed() % 5 == 0 &&
+            props.route.params.getGamesPlayed() % 4 == 0 &&
             props.route.params.getGamesPlayed() != 0
         ) {
             if (networkConnection) {
@@ -395,7 +399,7 @@ export default function TimeGame(props) {
                     console.log("Error getting document:", error);
                 });
 
-            if (timeScoresFB.length < 5) {
+            if (timeScoresFB.length < 200) {
                 await firebase
                     .firestore()
                     .collection("highscores")
@@ -486,7 +490,9 @@ export default function TimeGame(props) {
     return (
         <View
             style={
-                gameStatus == "playing" ? styles.container : styles.containerEnd
+                gameStatus != "playing" || isSmallDevice.current
+                    ? styles.containerEnd
+                    : styles.container
             }
         >
             {gameStatus == "playing" ? (
@@ -597,18 +603,32 @@ export default function TimeGame(props) {
                             style={styles.card}
                             onPress={() => handleCardPress(item)}
                         >
-                            <FontAwesomeIcon
-                                icon={item}
-                                size={32}
-                                opacity={0.9}
-                            />
+                            {isLargeDevice.current ? (
+                                <FontAwesomeIcon
+                                    icon={item}
+                                    size={100}
+                                    opacity={0.9}
+                                />
+                            ) : (
+                                <FontAwesomeIcon
+                                    icon={item}
+                                    size={32}
+                                    opacity={0.9}
+                                />
+                            )}
                         </TouchableOpacity>
                     )}
                 />
             ) : (
                 <View>
                     {gameStatus == "lose" ? (
-                        <View style={styles.gameEndContainer}>
+                        <View
+                            style={
+                                isSmallDevice.current
+                                    ? styles.gameEndContainerSmall
+                                    : styles.gameEndContainer
+                            }
+                        >
                             <Text style={styles.gameEndTitle}>Game Over</Text>
 
                             <Text style={styles.reasonText}>
@@ -616,7 +636,13 @@ export default function TimeGame(props) {
                             </Text>
                         </View>
                     ) : (
-                        <View style={styles.gameEndContainer}>
+                        <View
+                            style={
+                                isSmallDevice.current
+                                    ? styles.gameEndContainerSmall
+                                    : styles.gameEndContainer
+                            }
+                        >
                             <Text style={styles.gameEndTitle}>You Win!</Text>
                             <Text style={styles.reasonText}>
                                 You successfully pressed every card once.
@@ -624,8 +650,22 @@ export default function TimeGame(props) {
                         </View>
                     )}
                     <View style={styles.buttonsContainer}>
-                        {props.route.params.getGamesPlayed() % 5 == 0 &&
-                        props.route.params.getGamesPlayed() != 0 ? (
+                        {isSmallDevice.current ? (
+                            props.route.params.getGamesPlayed() % 4 == 0 &&
+                            props.route.params.getGamesPlayed() != 0 ? (
+                                <SmallFlatButton
+                                    title="Play Again"
+                                    withVideo={true}
+                                    onPress={checkForAd}
+                                />
+                            ) : (
+                                <SmallFlatButton
+                                    title="Play Again"
+                                    onPress={checkForAd}
+                                />
+                            )
+                        ) : props.route.params.getGamesPlayed() % 4 == 0 &&
+                          props.route.params.getGamesPlayed() != 0 ? (
                             <FlatButton
                                 title="Play Again"
                                 withVideo={true}
@@ -637,15 +677,29 @@ export default function TimeGame(props) {
                                 onPress={checkForAd}
                             />
                         )}
+                        {isSmallDevice.current ? (
+                            <SmallFlatButton
+                                title="Leader Board"
+                                onPress={handleLeaderBoardPress}
+                            />
+                        ) : (
+                            <FlatButton
+                                title="Leader Board"
+                                onPress={handleLeaderBoardPress}
+                            />
+                        )}
 
-                        <FlatButton
-                            title="Leader Board"
-                            onPress={handleLeaderBoardPress}
-                        />
-                        <FlatButton
-                            title="Main Menu"
-                            onPress={handleBackToMenuPress}
-                        />
+                        {isSmallDevice.current ? (
+                            <SmallFlatButton
+                                title="Main Menu"
+                                onPress={handleBackToMenuPress}
+                            />
+                        ) : (
+                            <FlatButton
+                                title="Main Menu"
+                                onPress={handleBackToMenuPress}
+                            />
+                        )}
                     </View>
                 </View>
             )}
@@ -681,7 +735,7 @@ const styles = StyleSheet.create({
     },
     musicButton: {
         position: "absolute",
-        bottom: 60,
+        bottom: "10%",
         right: 10,
         zIndex: 20,
     },
@@ -773,9 +827,11 @@ const styles = StyleSheet.create({
     cardsList: {
         flex: 1,
         padding: 20,
+        overflow: "visible",
     },
     card: {
         backgroundColor: "#1EF1E3",
+        borderRadius: 10,
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
@@ -794,7 +850,7 @@ const styles = StyleSheet.create({
     cardsLeftContainer: {
         justifyContent: "center",
         alignItems: "center",
-        marginBottom: 20,
+        marginBottom: "7%",
     },
     timer: {
         width: 120,
@@ -839,6 +895,11 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         marginVertical: 75,
+    },
+    gameEndContainerSmall: {
+        justifyContent: "center",
+        alignItems: "center",
+        marginVertical: 40,
     },
     gameEndTitle: {
         fontSize: 35,

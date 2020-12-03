@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { FlatList } from "react-native-gesture-handler";
 import FlatButton from "../shared/flatButton";
+import SmallFlatButton from "../shared/smallFlatButton";
 import { Dimensions } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import firebase from "../firebase/config";
@@ -40,6 +41,8 @@ export default function Game(props) {
     const [musicStatus, setMusicStatus] = useState(
         props.route.params.musicStatus
     );
+    const isLargeDevice = useRef(Dimensions.get("window").width > 600);
+    const isSmallDevice = useRef(Dimensions.get("window").width < 350);
 
     useLayoutEffect(() => {
         if (stopTimer.current == false) {
@@ -136,6 +139,7 @@ export default function Game(props) {
                 require("../assets/sounds/win.wav"),
                 { shouldPlay: true }
             );
+            await soundObject.setVolumeAsync(0.3);
             await soundObject.playAsync();
             if (musicStatus == "playing") {
                 await setTimeout(
@@ -306,7 +310,7 @@ export default function Game(props) {
             .isConnected;
 
         if (
-            props.route.params.getGamesPlayed() % 5 == 0 &&
+            props.route.params.getGamesPlayed() % 4 == 0 &&
             props.route.params.getGamesPlayed() != 0
         ) {
             if (networkConnection) {
@@ -446,7 +450,7 @@ export default function Game(props) {
                         console.log("Error getting document:", error);
                     });
 
-                if (normalScoresFB.length < 12) {
+                if (normalScoresFB.length < 200) {
                     await firebase
                         .firestore()
                         .collection("highscores")
@@ -498,7 +502,7 @@ export default function Game(props) {
                     }
                 }
 
-                let normalScoresFB = [];
+                let speedScoresFB = [];
                 await firebase
                     .firestore()
                     .collection("highscores")
@@ -506,7 +510,7 @@ export default function Game(props) {
                     .get()
                     .then(function (doc) {
                         if (doc.exists) {
-                            normalScoresFB = Object.entries(doc.data());
+                            speedScoresFB = Object.entries(doc.data());
                         } else {
                             // doc.data() will be undefined in this case
                             console.log("No such document!");
@@ -515,7 +519,7 @@ export default function Game(props) {
                     .catch(function (error) {
                         console.log("Error getting document:", error);
                     });
-                if (normalScoresFB.length < 5) {
+                if (speedScoresFB.length < 200) {
                     await firebase
                         .firestore()
                         .collection("highscores")
@@ -524,7 +528,7 @@ export default function Game(props) {
                             [props.route.params.loggedInUser.username]: score,
                         });
                 } else {
-                    const lowestUsernameAndScore = normalScoresFB.sort(
+                    const lowestUsernameAndScore = speedScoresFB.sort(
                         (a, b) => a[1] - b[1]
                     )[0];
                     if (score > lowestUsernameAndScore[1]) {
@@ -619,7 +623,9 @@ export default function Game(props) {
     return (
         <View
             style={
-                gameStatus == "playing" ? styles.container : styles.containerEnd
+                gameStatus != "playing" || isSmallDevice.current
+                    ? styles.containerEnd
+                    : styles.container
             }
         >
             {gameStatus == "playing" ? (
@@ -698,18 +704,32 @@ export default function Game(props) {
                             style={styles.card}
                             onPress={() => handleCardPress(item)}
                         >
-                            <FontAwesomeIcon
-                                icon={item}
-                                size={32}
-                                opacity={0.9}
-                            />
+                            {isLargeDevice.current ? (
+                                <FontAwesomeIcon
+                                    icon={item}
+                                    size={100}
+                                    opacity={0.9}
+                                />
+                            ) : (
+                                <FontAwesomeIcon
+                                    icon={item}
+                                    size={32}
+                                    opacity={0.9}
+                                />
+                            )}
                         </TouchableOpacity>
                     )}
                 />
             ) : (
                 <View>
                     {gameStatus == "lose" ? (
-                        <View style={styles.gameEndContainer}>
+                        <View
+                            style={
+                                isSmallDevice.current
+                                    ? styles.gameEndContainerSmall
+                                    : styles.gameEndContainer
+                            }
+                        >
                             <Text style={styles.gameEndTitle}>Game Over</Text>
                             {stopTimer.current ? (
                                 <Text style={styles.reasonText}>
@@ -722,7 +742,13 @@ export default function Game(props) {
                             )}
                         </View>
                     ) : (
-                        <View style={styles.gameEndContainer}>
+                        <View
+                            style={
+                                isSmallDevice.current
+                                    ? styles.gameEndContainerSmall
+                                    : styles.gameEndContainer
+                            }
+                        >
                             <Text style={styles.gameEndTitle}>You Win!</Text>
                             <Text style={styles.reasonText}>
                                 You successfully pressed every card once.
@@ -730,8 +756,22 @@ export default function Game(props) {
                         </View>
                     )}
                     <View style={styles.buttonsContainer}>
-                        {props.route.params.getGamesPlayed() % 5 == 0 &&
-                        props.route.params.getGamesPlayed() != 0 ? (
+                        {isSmallDevice.current ? (
+                            props.route.params.getGamesPlayed() % 4 == 0 &&
+                            props.route.params.getGamesPlayed() != 0 ? (
+                                <SmallFlatButton
+                                    title="Play Again"
+                                    withVideo={true}
+                                    onPress={checkForAd}
+                                />
+                            ) : (
+                                <SmallFlatButton
+                                    title="Play Again"
+                                    onPress={checkForAd}
+                                />
+                            )
+                        ) : props.route.params.getGamesPlayed() % 4 == 0 &&
+                          props.route.params.getGamesPlayed() != 0 ? (
                             <FlatButton
                                 title="Play Again"
                                 withVideo={true}
@@ -743,32 +783,67 @@ export default function Game(props) {
                                 onPress={checkForAd}
                             />
                         )}
-                        <FlatButton
-                            title="Leader Board"
-                            onPress={handleLeaderBoardPress}
-                        />
-                        <FlatButton
-                            title="Main Menu"
-                            onPress={handleBackToMenuPress}
-                        />
+                        {isSmallDevice.current ? (
+                            <SmallFlatButton
+                                title="Leader Board"
+                                onPress={handleLeaderBoardPress}
+                            />
+                        ) : (
+                            <FlatButton
+                                title="Leader Board"
+                                onPress={handleLeaderBoardPress}
+                            />
+                        )}
+
+                        {isSmallDevice.current ? (
+                            <SmallFlatButton
+                                title="Main Menu"
+                                onPress={handleBackToMenuPress}
+                            />
+                        ) : (
+                            <FlatButton
+                                title="Main Menu"
+                                onPress={handleBackToMenuPress}
+                            />
+                        )}
                     </View>
                 </View>
             )}
             {timeLeft >= 0 && gameStatus == "playing" ? (
                 <View style={styles.timerContainer}>
-                    <AnimatedCircularProgress
-                        size={100}
-                        style={styles.timer}
-                        width={20}
-                        rotation={0}
-                        fill={100 - (timeLeft / props.route.params.time) * 100}
-                        tintColor="grey"
-                        backgroundColor={tintColor.current}
-                    >
-                        {(fill) => (
-                            <Text style={styles.timerText}>{timeLeft}</Text>
-                        )}
-                    </AnimatedCircularProgress>
+                    {isSmallDevice.current ? (
+                        <AnimatedCircularProgress
+                            size={70}
+                            style={styles.timer}
+                            width={10}
+                            rotation={0}
+                            fill={
+                                100 - (timeLeft / props.route.params.time) * 100
+                            }
+                            tintColor="grey"
+                            backgroundColor={tintColor.current}
+                        >
+                            {(fill) => (
+                                <Text style={styles.timerText}>{timeLeft}</Text>
+                            )}
+                        </AnimatedCircularProgress>
+                    ) : (
+                        <AnimatedCircularProgress
+                            size={100}
+                            style={styles.timer}
+                            width={20}
+                            rotation={0}
+                            fill={
+                                100 - (timeLeft / props.route.params.time) * 100
+                            }
+                            tintColor="grey"
+                            backgroundColor={tintColor.current}
+                        >
+                            {(fill) => (
+                                <Text style={styles.timerText}>{timeLeft}</Text>
+                            )}
+                        </AnimatedCircularProgress>
+                    )}
                 </View>
             ) : (
                 <Text></Text>
@@ -796,7 +871,7 @@ const styles = StyleSheet.create({
     },
     musicButton: {
         position: "absolute",
-        bottom: 60,
+        bottom: "10%",
         right: 10,
         zIndex: 20,
     },
@@ -849,7 +924,6 @@ const styles = StyleSheet.create({
     },
     confetti: {
         position: "absolute",
-        // resizeMode: "cover",
         height: "104%",
         top: 0,
         zIndex: -10,
@@ -874,6 +948,7 @@ const styles = StyleSheet.create({
     cardsList: {
         flex: 1,
         padding: 20,
+        overflow: "visible",
     },
     card: {
         borderRadius: 10,
@@ -896,7 +971,7 @@ const styles = StyleSheet.create({
     timerContainer: {
         justifyContent: "center",
         alignItems: "center",
-        marginBottom: 50,
+        marginBottom: "15%",
     },
     timer: {
         shadowColor: "#000",
@@ -917,6 +992,11 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         marginVertical: 75,
+    },
+    gameEndContainerSmall: {
+        justifyContent: "center",
+        alignItems: "center",
+        marginVertical: 35,
     },
     gameEndTitle: {
         fontSize: 35,

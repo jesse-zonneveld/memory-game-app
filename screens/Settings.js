@@ -1,11 +1,21 @@
 import React, { useRef } from "react";
-import { StyleSheet, Text, View, TouchableOpacity, Image } from "react-native";
+import {
+    StyleSheet,
+    Text,
+    View,
+    TouchableOpacity,
+    Image,
+    Alert,
+    Linking,
+} from "react-native";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { Audio } from "expo-av";
 import { Dimensions } from "react-native";
+import FlatButton from "../shared/flatButton";
+import firebase from "../firebase/config";
 
-export default function HowToPlay(props) {
+export default function Settings(props) {
     const isSmallDevice = useRef(Dimensions.get("window").width < 350);
 
     const handleBackToMenuPress = () => {
@@ -28,6 +38,67 @@ export default function HowToPlay(props) {
         }
     };
 
+    const confirmDelete = () => {
+        Alert.alert(
+            "Are you sure you want to delete this account? You can not undo this action.",
+            "",
+            [
+                {
+                    text: "Cancel",
+                    onPress: () => console.log("Cancel Pressed"),
+                    style: "cancel",
+                },
+                {
+                    text: "Delete Account",
+                    onPress: handleDeletePress,
+                },
+            ],
+            { cancelable: false }
+        );
+    };
+
+    const handleDeletePress = async () => {
+        const user = await firebase.auth().currentUser;
+
+        if (user) {
+            await user.delete().then(
+                function () {
+                    console.log("user deleted");
+                },
+                function (error) {
+                    console.log("error deleting user");
+                }
+            );
+            props.route.params.handleLogoutPress();
+            props.navigation.navigate("Home");
+        } else {
+            soundPress();
+            Alert.alert(
+                "Oops! No account logged in",
+                "",
+                [
+                    {
+                        text: "Back to Menu",
+                        onPress: () => props.navigation.navigate("Home"),
+                        style: "cancel",
+                    },
+                ],
+                { cancelable: false }
+            );
+        }
+    };
+
+    const handlePrivacyPress = () => {
+        Linking.openURL(
+            "https://jesse-zonneveld.github.io/memory-press-privacy-policy/privacy-policy.html"
+        );
+    };
+    const handleTermsPress = () => {
+        Linking.openURL(
+            "https://jesse-zonneveld.github.io/memory-press-privacy-policy/terms-and-conditions.html"
+        );
+    };
+
     return (
         <View style={styles.container}>
             <TouchableOpacity
@@ -46,50 +117,19 @@ export default function HowToPlay(props) {
             <Text
                 style={isSmallDevice.current ? styles.smallTitle : styles.title}
             >
-                How to Play
+                Settings
             </Text>
-            <View style={styles.instructionsContainer}>
-                <View style={styles.textContainer}>
-                    <Text
-                        style={
-                            isSmallDevice.current
-                                ? styles.smallText
-                                : styles.text
-                        }
-                    >
-                        <Text style={styles.scoreText}>Score points</Text> by
-                        pressing on cards that you have not yet pressed.
-                    </Text>
-                </View>
-                <View style={styles.textContainer}>
-                    <Text
-                        style={
-                            isSmallDevice.current
-                                ? styles.smallText
-                                : styles.text
-                        }
-                    >
-                        <Text style={styles.goalText}>The goal</Text> is to
-                        complete the entire deck by only pressing on each card
-                        once.
-                    </Text>
-                </View>
-                <View style={styles.textContainer}>
-                    <Text
-                        style={
-                            isSmallDevice.current
-                                ? styles.smallText
-                                : styles.text
-                        }
-                    >
-                        <Text style={styles.loseText}>You lose</Text> if you
-                        press on a card that you have previously pressed on or
-                        if the timer reaches zero.
-                    </Text>
-                </View>
+            <View style={styles.buttonsContainer}>
+                <FlatButton title="Delete Account" onPress={confirmDelete} />
+                <FlatButton
+                    title="Privacy Policy"
+                    onPress={handlePrivacyPress}
+                />
+                <FlatButton
+                    title="Terms and Conditions"
+                    onPress={handleTermsPress}
+                />
             </View>
-
-            {/* <FlatButton title="Back to Menu" onPress={handleBackToMenuPress} /> */}
         </View>
     );
 }

@@ -588,6 +588,7 @@ const styles = StyleSheet.create({
         left: 0,
         top: 20,
         padding: 20,
+        paddingLeft: 10,
         zIndex: 5,
     },
     backText: {

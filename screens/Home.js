@@ -15,6 +15,9 @@ import {
     Alert,
 } from "react-native";
 import FlatButton from "../shared/flatButton";
+import SmallFlatButton from "../shared/smallFlatButton";
+import { Dimensions } from "react-native";
+
 import LoginForm from "./Login";
 import RegisterForm from "./Register";
 import { Audio } from "expo-av";
@@ -24,6 +27,7 @@ import { AsyncStorage } from "react-native";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faMusic } from "@fortawesome/free-solid-svg-icons";
 import { faSlash } from "@fortawesome/free-solid-svg-icons";
+import { faCog } from "@fortawesome/free-solid-svg-icons";
 import * as Network from "expo-network";
 
 export default function Home(props) {
@@ -42,6 +46,7 @@ export default function Home(props) {
     const music = useRef();
     const musicStatusRef = useRef("noSound");
     const [musicStatus, setMusicStatus] = useState("noSound");
+    const isSmallDevice = useRef(Dimensions.get("window").width < 350);
 
     useEffect(() => {
         playRecording();
@@ -127,7 +132,7 @@ export default function Home(props) {
                                     );
                                 });
 
-                            if (normalScoresFB.length < 12) {
+                            if (normalScoresFB.length < 200) {
                                 await firebase
                                     .firestore()
                                     .collection("highscores")
@@ -198,7 +203,7 @@ export default function Home(props) {
                                     );
                                 });
 
-                            if (speedScoresFB.length < 12) {
+                            if (speedScoresFB.length < 200) {
                                 await firebase
                                     .firestore()
                                     .collection("highscores")
@@ -269,7 +274,7 @@ export default function Home(props) {
                                     );
                                 });
 
-                            if (timeScoresFB.length < 12) {
+                            if (timeScoresFB.length < 200) {
                                 await firebase
                                     .firestore()
                                     .collection("highscores")
@@ -576,6 +581,15 @@ export default function Home(props) {
         );
     };
 
+    const handleSettingsPress = () => {
+        soundPress();
+
+        props.navigation.navigate("Settings", {
+            loggedInUser,
+            handleLogoutPress,
+        });
+    };
+
     return (
         <View style={styles.container}>
             <ScrollingBackground
@@ -604,11 +618,23 @@ export default function Home(props) {
                     />
                 )}
             </TouchableOpacity>
+            <TouchableOpacity
+                style={styles.settingsButton}
+                onPress={handleSettingsPress}
+            >
+                <FontAwesomeIcon icon={faCog} size={24} />
+            </TouchableOpacity>
             <Image
                 source={require("../assets/images/bannerBlue.png")}
-                style={styles.banner}
+                style={
+                    isSmallDevice.current ? styles.smallBanner : styles.banner
+                }
             />
-            <Text style={styles.title}>Memory Press</Text>
+            <Text
+                style={isSmallDevice.current ? styles.smallTitle : styles.title}
+            >
+                Memory Press
+            </Text>
             {loggedInUser ? (
                 <View style={styles.usernameContainer}>
                     <Text style={styles.usernameText}>
@@ -647,24 +673,77 @@ export default function Home(props) {
                         : styles.buttonsLoggedOutContainer
                 }
             >
-                <FlatButton title="Game Modes" onPress={handleGameModesPress} />
-                <FlatButton
-                    title="How to Play"
-                    onPress={handleHowToPlayPress}
-                />
-                <FlatButton
-                    title={"Leader Board"}
-                    onPress={handleLeaderBoardPress}
-                />
+                {isSmallDevice.current ? (
+                    <SmallFlatButton
+                        title="Game Modes"
+                        onPress={handleGameModesPress}
+                    />
+                ) : (
+                    <FlatButton
+                        title="Game Modes"
+                        onPress={handleGameModesPress}
+                    />
+                )}
+
+                {isSmallDevice.current ? (
+                    <SmallFlatButton
+                        title="How to Play"
+                        onPress={handleHowToPlayPress}
+                    />
+                ) : (
+                    <FlatButton
+                        title="How to Play"
+                        onPress={handleHowToPlayPress}
+                    />
+                )}
+                {isSmallDevice.current ? (
+                    <SmallFlatButton
+                        title={"Leader Board"}
+                        onPress={handleLeaderBoardPress}
+                    />
+                ) : (
+                    <FlatButton
+                        title={"Leader Board"}
+                        onPress={handleLeaderBoardPress}
+                    />
+                )}
+
                 {loggedInUser ? (
-                    <FlatButton title="Logout" onPress={handleLogoutPress} />
+                    isSmallDevice.current ? (
+                        <SmallFlatButton
+                            title="Logout"
+                            onPress={handleLogoutPress}
+                        />
+                    ) : (
+                        <FlatButton
+                            title="Logout"
+                            onPress={handleLogoutPress}
+                        />
+                    )
                 ) : (
                     <View>
-                        <FlatButton
-                            title="Register Account"
-                            onPress={handleRegisterPress}
-                        />
-                        <FlatButton title="Login" onPress={handleLoginPress} />
+                        {isSmallDevice.current ? (
+                            <SmallFlatButton
+                                title="Register Account"
+                                onPress={handleRegisterPress}
+                            />
+                        ) : (
+                            <FlatButton
+                                title="Register Account"
+                                onPress={handleRegisterPress}
+                            />
+                        )}
+                        {isSmallDevice.current ? (
+                            <SmallFlatButton
+                                title="Login"
+                                onPress={handleLoginPress}
+                            />
+                        ) : (
+                            <FlatButton
+                                title="Login"
+                                onPress={handleLoginPress}
+                            />
+                        )}
                     </View>
                 )}
             </View>
@@ -708,8 +787,13 @@ export default function Home(props) {
 const styles = StyleSheet.create({
     musicButton: {
         position: "absolute",
-        bottom: 60,
+        bottom: "10%",
         right: 10,
+    },
+    settingsButton: {
+        position: "absolute",
+        bottom: "10%",
+        right: 40,
     },
     musicSlash: {
         transform: [{ translateY: 25 }],
@@ -741,6 +825,7 @@ const styles = StyleSheet.create({
         position: "absolute",
         top: 65,
         width: "100%",
+        maxWidth: 500,
         height: 100,
         shadowColor: "#000",
         shadowOffset: {
@@ -752,12 +837,34 @@ const styles = StyleSheet.create({
 
         // elevation: 5,
     },
+    smallBanner: {
+        position: "absolute",
+        top: 10,
+        width: "110%",
+        maxWidth: 500,
+        height: 100,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 2,
+            height: 2,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        transform: [{ scale: 0.9 }],
+    },
     title: {
         fontFamily: "nunito-bold",
         fontSize: 32,
         // marginBottom: 100,
         position: "absolute",
         top: 105,
+    },
+    smallTitle: {
+        fontFamily: "nunito-bold",
+        fontSize: 28,
+        // marginBottom: 100,
+        position: "absolute",
+        top: 50,
     },
     scrollingBackground: {
         backgroundColor: "#fff",
@@ -767,7 +874,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         borderColor: "black",
         position: "absolute",
-        top: 180,
+        top: "27%",
         maxWidth: 362,
         paddingHorizontal: 40,
         paddingVertical: 10,
@@ -817,10 +924,13 @@ const styles = StyleSheet.create({
     },
     buttonsLoggedOutContainer: {
         position: "absolute",
-        top: 280,
+        bottom: "7%",
     },
     buttonsLoggedInContainer: {
         position: "absolute",
-        top: 350,
+        bottom: "7%",
+    },
+    smallDevice: {
+        transform: [{ scale: 0.8 }],
     },
 });

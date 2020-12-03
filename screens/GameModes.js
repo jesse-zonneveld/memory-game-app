@@ -16,12 +16,15 @@ import ScrollingBackground from "react-native-scrolling-images";
 import { Audio } from "expo-av";
 import { AdMobBanner, AdMobInterstitial } from "expo-ads-admob";
 import * as Network from "expo-network";
+import { Dimensions } from "react-native";
 
 export default function GameModes(props) {
     const selectedGameMode = useRef();
     const [musicStatus, setMusicStatus] = useState(
         props.route.params.musicStatusRef
     );
+    const isSmallDevice = useRef(Dimensions.get("window").width < 350);
+
     useEffect(() => {
         AdMobInterstitial.addEventListener("interstitialDidLoad", () => {
             if (getMusicStatus() == "playing") {
@@ -53,6 +56,7 @@ export default function GameModes(props) {
             props.route.params.increaseGamesPlayed();
         });
     }, []);
+
     const handleBackToMenuPress = () => {
         soundPress();
         props.navigation.navigate("Home");
@@ -202,7 +206,7 @@ export default function GameModes(props) {
             .isConnected;
 
         if (
-            props.route.params.getGamesPlayed() % 5 == 0 &&
+            props.route.params.getGamesPlayed() % 4 == 0 &&
             props.route.params.getGamesPlayed() != 0
         ) {
             if (networkConnection) {
@@ -291,9 +295,15 @@ export default function GameModes(props) {
             </TouchableOpacity>
             <Image
                 source={require("../assets/images/bannerBlue.png")}
-                style={styles.banner}
+                style={
+                    isSmallDevice.current ? styles.smallBanner : styles.banner
+                }
             />
-            <Text style={styles.title}>Game Modes</Text>
+            <Text
+                style={isSmallDevice.current ? styles.smallTitle : styles.title}
+            >
+                Game Modes
+            </Text>
             <View style={styles.buttonsContainer}>
                 <FlatButtonBig
                     title="Normal"
@@ -338,7 +348,7 @@ const styles = StyleSheet.create({
     },
     musicButton: {
         position: "absolute",
-        bottom: 60,
+        bottom: "10%",
         right: 10,
     },
     musicSlash: {
@@ -360,6 +370,7 @@ const styles = StyleSheet.create({
         left: 0,
         top: 20,
         padding: 20,
+        paddingLeft: 10,
         zIndex: 5,
     },
     backText: {
@@ -371,6 +382,7 @@ const styles = StyleSheet.create({
         position: "absolute",
         top: 80,
         width: "100%",
+        maxWidth: 500,
         height: 100,
         shadowColor: "#000",
         shadowOffset: {
@@ -382,12 +394,34 @@ const styles = StyleSheet.create({
 
         // elevation: 5,
     },
+    smallBanner: {
+        position: "absolute",
+        top: 60,
+        width: "110%",
+        maxWidth: 500,
+        height: 100,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 2,
+            height: 2,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        transform: [{ scale: 0.9 }],
+    },
     title: {
         fontFamily: "nunito-bold",
         fontSize: 32,
         // marginBottom: 100,
         position: "absolute",
         top: 120,
+    },
+    smallTitle: {
+        fontFamily: "nunito-bold",
+        fontSize: 28,
+        // marginBottom: 100,
+        position: "absolute",
+        top: 100,
     },
     buttonsContainer: {
         position: "absolute",

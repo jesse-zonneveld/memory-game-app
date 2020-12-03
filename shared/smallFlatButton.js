@@ -3,7 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import { faVideo } from "@fortawesome/free-solid-svg-icons";
 
-export default function FlatButton({ title, onPress, withVideo = false }) {
+export default function SmallFlatButton({ title, onPress, withVideo = false }) {
     return (
         <TouchableOpacity onPress={onPress}>
             {withVideo ? (
@@ -33,7 +33,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         minWidth: 200,
         backgroundColor: "#f01d71",
-        marginBottom: 15,
+        marginBottom: 5,
         shadowColor: "#000",
         shadowOffset: {
             width: 2,
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         minWidth: 200,
         backgroundColor: "#f01d71",
-        marginBottom: 15,
+        marginBottom: 5,
         shadowColor: "#000",
         shadowOffset: {
             width: 2,

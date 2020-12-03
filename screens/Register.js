@@ -298,16 +298,21 @@ export default function RegisterForm(props) {
 const styles = StyleSheet.create({
     container: {
         width: "100%",
+        justifyContent: "center",
+        alignItems: "center",
     },
     exitButton: {
         position: "absolute",
         right: 0,
         top: 20,
         padding: 20,
+        zIndex: 99,
     },
     form: {
         marginTop: 200,
         paddingHorizontal: 20,
+        width: "100%",
+        maxWidth: 500,
     },
     input: {
         borderWidth: 1,
