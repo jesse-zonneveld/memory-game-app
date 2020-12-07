@@ -325,7 +325,12 @@ export default function Game(props) {
                 );
                 AdMobInterstitial.addEventListener(
                     "interstitialDidFailToLoad",
-                    () => console.log("failedtoload")
+                    () => {
+                        console.log("failedtoload");
+                        restartGame();
+                        removeListenersForAd();
+                        props.route.params.increaseGamesPlayed();
+                    }
                 );
                 AdMobInterstitial.addEventListener("interstitialDidOpen", () =>
                     console.log("opened")
@@ -370,8 +375,11 @@ export default function Game(props) {
     };
 
     const showVideoAd = async () => {
+        // await AdMobInterstitial.setAdUnitID(
+        //     "ca-app-pub-3940256099942544/5135589807" // test
+        // );
         await AdMobInterstitial.setAdUnitID(
-            "ca-app-pub-3940256099942544/5135589807" // test
+            "ca-app-pub-4308697206344728/6145960589" // real
         );
         await AdMobInterstitial.requestAdAsync({
             servePersonalizedAds: true,
@@ -851,7 +859,8 @@ export default function Game(props) {
 
             <AdMobBanner
                 style={styles.ad}
-                adUnitID="ca-app-pub-3940256099942544/2934735716"
+                // adUnitID="ca-app-pub-3940256099942544/2934735716" //Test
+                adUnitID="ca-app-pub-4308697206344728/2998737278" //Real
                 onDidFailToReceiveAdWithError={() => console.log("ad error")}
             />
         </View>

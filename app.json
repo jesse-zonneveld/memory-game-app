@@ -1,8 +1,8 @@
 {
     "expo": {
-        "name": "Memory Press",
-        "slug": "memory-press",
-        "version": "1.0.1",
+        "name": "Card Cram",
+        "slug": "card-cram",
+        "version": "1.0.3",
         "privacy": "unlisted",
         "orientation": "portrait",
         "icon": "./assets/images/icon.png",

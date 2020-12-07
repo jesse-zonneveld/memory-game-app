@@ -633,7 +633,7 @@ export default function Home(props) {
             <Text
                 style={isSmallDevice.current ? styles.smallTitle : styles.title}
             >
-                Memory Press
+                Card Cram
             </Text>
             {loggedInUser ? (
                 <View style={styles.usernameContainer}>
@@ -750,7 +750,8 @@ export default function Home(props) {
             <AdMobBanner
                 style={styles.ad}
                 bannerSize={"smartBannerPortrait"}
-                adUnitID="ca-app-pub-3940256099942544/2934735716"
+                // adUnitID="ca-app-pub-3940256099942544/2934735716" //Test
+                adUnitID="ca-app-pub-4308697206344728/2998737278" //Real
                 onDidFailToReceiveAdWithError={() => console.log("ad error")}
             />
 
